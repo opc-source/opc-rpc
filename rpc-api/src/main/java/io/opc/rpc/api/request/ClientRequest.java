@@ -16,7 +16,7 @@ public abstract class ClientRequest implements Request {
     /**
      * RequestId generate on construct.
      */
-    private String requestId = REQUEST_ID_HELPER.generateRequestId();
+    protected final String requestId = REQUEST_ID_HELPER.generateRequestId();
 
     @Override
     public String getRequestId() {

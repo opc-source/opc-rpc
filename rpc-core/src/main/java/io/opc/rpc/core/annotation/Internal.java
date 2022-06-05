@@ -1,4 +1,4 @@
-package io.opc.rpc.api.annotation;
+package io.opc.rpc.core.annotation;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

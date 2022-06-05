@@ -10,4 +10,11 @@ import io.opc.rpc.api.Payload;
  */
 public interface Response extends Payload {
 
+    /**
+     * Get requestId.
+     *
+     * @return requestId
+     */
+    String getRequestId();
+
 }

@@ -1,4 +1,4 @@
-package io.opc.rpc.core;
+package io.opc.rpc.client;
 
 import io.opc.rpc.api.OpcRpcClient;
 import java.util.Properties;
@@ -10,7 +10,6 @@ import java.util.Properties;
  * @version Id: DefaultOpcRpcClient.java, v 0.1 2022年06月02日 22:38 caihongwen Exp $
  */
 public class DefaultOpcRpcClient extends BaseOpcRpcClient implements OpcRpcClient {
-
 
     @Override
     protected void doInit(Properties properties) {

@@ -9,6 +9,13 @@ package io.opc.rpc.api.constant;
  */
 public interface OpcConstants {
 
+    String COLON = ":";
+
+    /**
+     * opc.rpc.client.name
+     */
+    String KEY_OPC_RPC_CLIENT_NAME = "opc.rpc.client.name";
+
     interface Server {
 
         /**

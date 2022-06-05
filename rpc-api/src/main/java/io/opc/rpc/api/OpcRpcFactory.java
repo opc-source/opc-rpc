@@ -3,6 +3,7 @@ package io.opc.rpc.api;
 import io.opc.rpc.api.constant.OpcConstants;
 import java.util.Objects;
 import java.util.Properties;
+import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
  * @version Id: OpcRpcFactory.java, v 0.1 2022年06月02日 22:00 caihongwen Exp $
  */
 @Slf4j
+@UtilityClass
 public class OpcRpcFactory {
 
     /**
@@ -39,11 +41,31 @@ public class OpcRpcFactory {
         Objects.requireNonNull(properties, "properties is null");
 
         try {
-            final Class<?> clazz = Class.forName("io.opc.rpc.core.DefaultOpcRpcClient");
+            final Class<?> clazz = Class.forName("io.opc.rpc.client.DefaultOpcRpcClient");
             final OpcRpcClient opcRpcClient = (OpcRpcClient) clazz.newInstance();
 
             opcRpcClient.init(properties);
             return opcRpcClient;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Create OpcServer.
+     *
+     * @param properties {@link Properties}
+     * @return {@link OpcRpcServer}
+     */
+    public OpcRpcServer createOpcServer(Properties properties) {
+        Objects.requireNonNull(properties, "properties is null");
+
+        try {
+            final Class<?> clazz = Class.forName("io.opc.rpc.server.DefaultOpcRpcServer");
+            final OpcRpcServer opcRpcServer = (OpcRpcServer) clazz.newInstance();
+
+            opcRpcServer.init(properties);
+            return opcRpcServer;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

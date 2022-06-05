@@ -5,7 +5,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.opc.rpc</groupId>
-    <artifactId>rpc-all</artifactId>
+    <artifactId>rpc-parent</artifactId>
     <packaging>pom</packaging>
 
     <!-- feel free to delete the comment at the end of these lines.
@@ -17,6 +17,8 @@
     <modules>
         <module>rpc-api</module>
         <module>rpc-core</module>
+        <module>rpc-client</module>
+        <module>rpc-server</module>
     </modules>
 
     <properties>
@@ -77,6 +79,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.36</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.11</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

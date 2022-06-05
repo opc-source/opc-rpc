@@ -24,7 +24,6 @@ option java_package = "io.opc.rpc.core.grpc.auto";
 option objc_class_prefix = "OPC";
 
 message Metadata {
-  string type = 1;
   map<string, string> headers = 2;
 }
 
