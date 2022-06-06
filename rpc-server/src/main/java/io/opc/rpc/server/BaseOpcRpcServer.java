@@ -156,8 +156,10 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 this.server.shutdown();
                 ConnectionManager.removeAndCloseAll();
                 this.server.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ignore) {
+                Thread.currentThread().interrupt();
+                this.server.shutdownNow();
             } catch (Exception ignore) {
-                // ignore
                 this.server.shutdownNow();
             }
         }

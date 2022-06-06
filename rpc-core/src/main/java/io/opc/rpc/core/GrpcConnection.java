@@ -68,6 +68,7 @@ public class GrpcConnection extends BaseConnection implements Connection {
         try {
             this.channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException ignore) {
+            Thread.currentThread().interrupt();
             // ManagedChannels use resources like threads and TCP connections. To prevent leaking these
             // resources the channel should be shut down when it will no longer be used. If it may be used
             // again leave it running.
