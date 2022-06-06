@@ -12,7 +12,7 @@
         it is just for safely updating the version in our release process. -->
     <version>${revision}</version>
     <name>rpc-all</name>
-    <url>https://github.com/CherishCai/opc-rpc</url>
+    <url>https://github.com/opc-source/opc-rpc</url>
 
     <modules>
         <module>rpc-api</module>
