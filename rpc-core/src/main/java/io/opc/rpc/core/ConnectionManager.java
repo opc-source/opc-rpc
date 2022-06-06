@@ -3,6 +3,8 @@ package io.opc.rpc.core;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -13,6 +15,11 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public class ConnectionManager {
+
+    /**
+     * KEEP_ACTIVE_TIME_MILLIS, 4 * times than client, TODO change 5 to 20?
+     */
+    private static final long KEEP_ACTIVE_TIME_MILLIS = TimeUnit.SECONDS.toMillis(5);
 
     private static final Map<String/*connectionId*/, Connection> connectionMap = new ConcurrentHashMap<>(16);
 
@@ -81,6 +88,29 @@ public class ConnectionManager {
     public void removeAndCloseAll() {
         connectionMap.values().forEach(Connection::close);
         connectionMap.clear();
+    }
+
+    /**
+     * refresh Connection's activeTime
+     *
+     * @param connectionId connectionId
+     */
+    public void refreshActiveTime(String connectionId) {
+        final Connection connection = getConnection(connectionId);
+        if (connection != null && connection instanceof BaseConnection) {
+            ((BaseConnection) connection).refreshLastActiveTime();
+        }
+    }
+
+    /**
+     * get active timeout getter than {@link #KEEP_ACTIVE_TIME_MILLIS}'s Connections
+     */
+    public Collection<Connection> getActiveTimeoutConnections() {
+        final Collection<Connection> connections = getConnections();
+        final long now = System.currentTimeMillis();
+        return connections.stream().filter(conn ->
+                        (conn instanceof BaseConnection) && (now - KEEP_ACTIVE_TIME_MILLIS > ((BaseConnection) conn).getLastActiveTime()))
+                .collect(Collectors.toList());
     }
 
 }

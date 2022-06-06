@@ -13,6 +13,7 @@ import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.ServerTransportFilter;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.grpc.util.MutableHandlerRegistry;
@@ -21,7 +22,6 @@ import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.Response;
-import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.BaseConnection;
 import io.opc.rpc.core.Connection;
 import io.opc.rpc.core.ConnectionManager;
@@ -128,12 +128,21 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             throw new RuntimeException(e);
         }
 
-        // TODO ClientDetectionServerRequest just for test now. maybe keep a LastActiveTime and out of time will do check
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
                 r -> new Thread(r, "io.opc.rpc.core.OpcRpcServerScheduler"));
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
-            for (Connection connection : ConnectionManager.getConnections()) {
-                connection.requestBi(new ClientDetectionServerRequest());
+            // last active timeout will do check with ClientDetectionServerRequest
+            for (Connection connection : ConnectionManager.getActiveTimeoutConnections()) {
+                // TODO or requestBi timeout, maybe client busy(apparent death)
+                try {
+                    connection.requestBi(new ClientDetectionServerRequest());
+                } catch (StatusRuntimeException statusEx) {
+                    log.warn("[{}]Grpc requestBi ClientDetectionServerRequest statusEx", connection.getConnectionId(), statusEx);
+                    ConnectionManager.removeAndClose(connection.getConnectionId());
+                } catch (Exception unknownEx) {
+                    log.error("[{}]Grpc requestBi ClientDetectionServerRequest error", connection.getConnectionId(), unknownEx);
+                    ConnectionManager.removeAndClose(connection.getConnectionId());
+                }
             }
         }, 1000L, 3000L, TimeUnit.MILLISECONDS);
 
@@ -195,6 +204,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 io.grpc.stub.StreamObserver<io.opc.rpc.core.grpc.auto.Payload> responseObserver) {
 
             final String connectionId = CONTEXT_KEY_CONN_ID.get();
+            ConnectionManager.refreshActiveTime(connectionId);
             final io.opc.rpc.api.Payload payloadObj;
             try {
                 payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
@@ -259,6 +269,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 @Override
                 public void onNext(Payload requestPayload) {
 
+                    ConnectionManager.refreshActiveTime(connectionId);
                     final io.opc.rpc.api.Payload payloadObj;
                     try {
                         payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
