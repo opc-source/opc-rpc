@@ -9,8 +9,8 @@ import lombok.Setter;
 /**
  * BaseConnection.
  *
- * @author mengyuan
- * @version Id: BaseConnection.java, v 0.1 2022年06月03日 11:32 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: BaseConnection.java, v 0.1 2022年06月03日 11:32 caihongwen Exp $
  */
 @NoArgsConstructor
 @AllArgsConstructor
@@ -25,5 +25,15 @@ public abstract class BaseConnection implements Connection {
     private Endpoint endpoint;
 
     private Map<String, String> labels;
+
+    @Override
+    public String toString() {
+        return "Connection{" +
+                "connectionId='" + connectionId + '\'' +
+                ", clientName='" + clientName + '\'' +
+                ", endpoint=" + endpoint +
+                ", labels=" + labels +
+                '}';
+    }
 
 }

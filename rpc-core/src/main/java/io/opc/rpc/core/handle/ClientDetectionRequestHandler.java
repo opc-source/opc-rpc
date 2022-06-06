@@ -6,8 +6,8 @@ import io.opc.rpc.core.response.ClientDetectionClientResponse;
 /**
  * ClientDetectionRequestHandler.
  *
- * @author mengyuan
- * @version Id: ClientDetectionRequestHandler.java, v 0.1 2022年06月05日 21:40 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ClientDetectionRequestHandler.java, v 0.1 2022年06月05日 21:40 caihongwen Exp $
  */
 public class ClientDetectionRequestHandler extends BaseRequestHandler<ClientDetectionServerRequest, ClientDetectionClientResponse> {
 

@@ -5,8 +5,8 @@ import io.opc.rpc.api.Payload;
 /**
  * Connection.
  *
- * @author mengyuan
- * @version Id: Connection.java, v 0.1 2022年06月03日 11:31 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: Connection.java, v 0.1 2022年06月03日 11:31 caihongwen Exp $
  */
 public interface Connection {
 

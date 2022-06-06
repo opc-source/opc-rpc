@@ -12,7 +12,6 @@ import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.Connection;
-import io.opc.rpc.core.ConnectionManager;
 import io.opc.rpc.core.Endpoint;
 import io.opc.rpc.core.GrpcConnection;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
@@ -36,7 +35,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nonnull;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * BaseOpcRpcClient.
@@ -44,8 +44,9 @@ import lombok.extern.slf4j.Slf4j;
  * @author caihongwen
  * @version Id: BaseOpcRpcClient.java, v 0.1 2022年06月02日 22:38 caihongwen Exp $
  */
-@Slf4j
 public abstract class BaseOpcRpcClient implements OpcRpcClient {
+
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
     private final AtomicBoolean initialized = new AtomicBoolean(false);
 
@@ -92,13 +93,11 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         if (this.currentConnection == null) {
             log.error("connect to server failed. do asyncSwitchServer.");
             this.asyncSwitchServer();
-        } else {
-            ConnectionManager.holdAndCloseOld(this.currentConnection);
         }
 
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1, r -> {
             Thread t = new Thread(r);
-            t.setName("io.opc.rpc.core.BaseOpcRpcClientScheduler");
+            t.setName("io.opc.rpc.core.OpcRpcClientScheduler");
             t.setDaemon(true);
             return t;
         });
@@ -125,7 +124,6 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             this.asyncSwitchServer();
         } else {
             this.currentConnection = connection;
-            ConnectionManager.holdAndCloseOld(this.currentConnection);
         }
     }
 
@@ -182,12 +180,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                     final ServerRequest serverRequest = (ServerRequest) payloadObj;
                     Response response = RequestHandlerSupport.handleRequest(serverRequest);
                     if (response == null) {
-                        ErrorResponse errorResponse = ErrorResponse.build(501, "handleRequest get null");
-                        errorResponse.setRequestId(serverRequest.getRequestId());
-                        response = errorResponse;
-                    } else if (response instanceof ClientResponse) {
-                        ((ClientResponse) response).setRequestId(serverRequest.getRequestId());
+                        response = ErrorResponse.build(501, "handleRequest get null");
                     }
+                    response.setRequestId(serverRequest.getRequestId());
                     // do response
                     grpcConnection.requestBi(response);
                 }
@@ -224,7 +219,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             }
         };
         final StreamObserver<Payload> requestBiStreamObserver = opcGrpcServiceStub.requestBiStream(responseBiStreamObserver);
-        grpcConnection.setRequestBiStreamObserver(requestBiStreamObserver);
+        grpcConnection.setBiStreamObserver(requestBiStreamObserver);
 
         // do ConnectionSetup
         final ConnectionSetupClientRequest setupClientRequest = ConnectionSetupClientRequest.builder()
@@ -255,7 +250,18 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     protected abstract void doInit(Properties properties);
 
     @Override
-    public void destroy() {
+    public void close() {
+        if (this.currentConnection != null) {
+            log.info("Shutdown Connection {}", this.currentConnection);
+            this.currentConnection.close();
+        }
+
+        if (this.scheduledExecutor != null && !this.scheduledExecutor.isShutdown()) {
+            log.info("Shutdown scheduledExecutor {}", scheduledExecutor);
+            this.scheduledExecutor.shutdown();
+        }
+
+        // Finally shutdown executor.
         if (this.executor != null && !this.executor.isShutdown()) {
             log.info("Shutdown executor {}", executor);
             this.executor.shutdown();

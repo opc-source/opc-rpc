@@ -13,8 +13,8 @@ import lombok.experimental.UtilityClass;
 /**
  * PayloadClassHelper.
  *
- * @author mengyuan
- * @version Id : PayloadClassHelper.java, v 0.1 2022年06月05日 11:29 mengyuan Exp $
+ * @author caihongwen
+ * @version Id : PayloadClassHelper.java, v 0.1 2022年06月05日 11:29 caihongwen Exp $
  */
 @UtilityClass
 public class PayloadClassHelper {

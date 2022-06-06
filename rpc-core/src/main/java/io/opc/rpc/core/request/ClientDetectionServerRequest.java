@@ -5,8 +5,8 @@ import io.opc.rpc.api.request.ServerRequest;
 /**
  * ClientDetectionServerRequest. Detection request from Server.
  *
- * @author mengyuan
- * @version Id: ClientDetectionServerRequest.java, v 0.1 2022年06月05日 21:07 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ClientDetectionServerRequest.java, v 0.1 2022年06月05日 21:07 caihongwen Exp $
  */
 public class ClientDetectionServerRequest extends ServerRequest {
 

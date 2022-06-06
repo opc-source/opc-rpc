@@ -12,14 +12,14 @@ import org.junit.Test;
 /**
  * DefaultOpcRpcClientTest.
  *
- * @author hongwen.chw@antgroup.com
- * @version : DefaultOpcRpcClientTest, v0.1 2022-06-05 15:09 mengyuan Exp $
+ * @author caihongwen
+ * @version : DefaultOpcRpcClientTest, v0.1 2022-06-05 15:09 caihongwen Exp $
  */
 public class DefaultOpcRpcClientTest {
 
     @Test
     @Ignore
-    public void doInit() throws InterruptedException {
+    public void doInit() throws Exception {
         final Properties properties = new Properties();
         properties.setProperty(OpcConstants.KEY_OPC_RPC_CLIENT_NAME, "localTest");
         properties.setProperty(OpcConstants.Server.KEY_OPC_RPC_SERVER_HOST, "localhost");
@@ -29,6 +29,8 @@ public class DefaultOpcRpcClientTest {
 
         Assert.assertNotNull(rpcClient);
         TimeUnit.SECONDS.sleep(15);
+        rpcClient.close();
+        TimeUnit.MILLISECONDS.sleep(100);
     }
 
 }

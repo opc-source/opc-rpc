@@ -8,7 +8,7 @@ import java.util.Properties;
  * @author caihongwen
  * @version Id: OpcRpcServer.java, v 0.1 2022年06月02日 22:01 caihongwen Exp $
  */
-public interface OpcRpcServer {
+public interface OpcRpcServer extends AutoCloseable{
 
     /**
      * init.

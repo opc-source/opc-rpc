@@ -6,8 +6,8 @@ import lombok.experimental.UtilityClass;
 /**
  * JsonSerialization for default.
  *
- * @author mengyuan
- * @version Id: JsonSerialization.java, v 0.1 2022年06月03日 11:44 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: JsonSerialization.java, v 0.1 2022年06月03日 11:44 caihongwen Exp $
  */
 @UtilityClass
 public class JsonSerialization {

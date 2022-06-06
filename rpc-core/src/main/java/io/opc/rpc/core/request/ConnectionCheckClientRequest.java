@@ -6,8 +6,8 @@ import io.opc.rpc.core.annotation.Internal;
 /**
  * ConnectionCheckClientRequest.
  *
- * @author mengyuan
- * @version Id: ConnectionCheckClientRequest.java, v 0.1 2022年06月03日 11:17 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ConnectionCheckClientRequest.java, v 0.1 2022年06月03日 11:17 caihongwen Exp $
  */
 @Internal
 public class ConnectionCheckClientRequest extends ClientRequest {

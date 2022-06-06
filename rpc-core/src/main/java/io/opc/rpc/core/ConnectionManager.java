@@ -2,16 +2,14 @@ package io.opc.rpc.core;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
 
 /**
  * ConnectionManager.
  *
- * @author mengyuan
- * @version Id: ConnectionManager.java, v 0.1 2022年06月03日 12:01 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ConnectionManager.java, v 0.1 2022年06月03日 12:01 caihongwen Exp $
  */
 @UtilityClass
 public class ConnectionManager {
@@ -38,19 +36,10 @@ public class ConnectionManager {
     }
 
     /**
-     * get Connection EntrySet.
-     *
-     * @return Connection EntrySet
-     */
-    public Set<Entry<String, Connection>> connectionEntrySet() {
-        return connectionMap.entrySet();
-    }
-
-    /**
-     * Hold Connection.
+     * Hold Connection and close old.
      *
      * @param connection Connection
-     * @return null or oldConnection
+     * @return ture->has old, false->not old
      */
     public boolean holdAndCloseOld(Connection connection) {
         final Connection oldConnect = holdConnection(connection);
@@ -75,15 +64,23 @@ public class ConnectionManager {
      * remove and close Connection.
      *
      * @param connectionId String
-     * @return exit ola.
+     * @return exit old.
      */
-    public boolean removeAndCloseConnection(String connectionId) {
+    public boolean removeAndClose(String connectionId) {
         final Connection connection = connectionMap.remove(connectionId);
         if (connection == null) {
             return false;
         }
         connection.close();
         return true;
+    }
+
+    /**
+     * remove and close all Connection.
+     */
+    public void removeAndCloseAll() {
+        connectionMap.values().forEach(Connection::close);
+        connectionMap.clear();
     }
 
 }

@@ -45,16 +45,18 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * BaseOpcRpcServer.
  *
- * @author mengyuan
- * @version Id: BaseOpcRpcServer.java, v 0.1 2022年06月05日 10:35 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: BaseOpcRpcServer.java, v 0.1 2022年06月05日 10:35 caihongwen Exp $
  */
-@Slf4j
 public abstract class BaseOpcRpcServer implements OpcRpcServer {
+
+    protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
     protected ThreadPoolExecutor executor;
 
@@ -68,8 +70,10 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         Integer serverPort = (Integer) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT,
                 OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
 
+        this.executor = createServerExecutor(serverPort);
+
         // server interceptor to set connection id.
-        ServerInterceptor serverInterceptor = new ServerInterceptor() {
+        final ServerInterceptor serverInterceptor = new ServerInterceptor() {
             @Override
             public <T, S> ServerCall.Listener<T> interceptCall(ServerCall<T, S> call, Metadata headers,
                     ServerCallHandler<T, S> next) {
@@ -84,8 +88,6 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         };
         final MutableHandlerRegistry handlerRegistry = new MutableHandlerRegistry();
         handlerRegistry.addService(ServerInterceptors.intercept(new OpcGrpcServiceImpl(), serverInterceptor));
-
-        this.executor = createServerExecutor(serverPort);
 
         this.server = ServerBuilder.forPort(serverPort).executor(this.executor)
                 .fallbackHandlerRegistry(handlerRegistry)
@@ -113,7 +115,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         try {
                             String connectionId = transportAttrs.get(TRANS_KEY_CONN_ID);
                             log.info("Connection transportTerminated,connectionId = {} ", connectionId);
-                            ConnectionManager.removeAndCloseConnection(connectionId);
+                            ConnectionManager.removeAndClose(connectionId);
                         } catch (Exception e) {
                             // Ignore
                         }
@@ -126,9 +128,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             throw new RuntimeException(e);
         }
 
-        // TODO just for test now.
+        // TODO ClientDetectionServerRequest just for test now. maybe keep a LastActiveTime and out of time will do check
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
-                r -> new Thread(r, "io.opc.rpc.core.BaseOpcRpcServerScheduler"));
+                r -> new Thread(r, "io.opc.rpc.core.OpcRpcServerScheduler"));
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             for (Connection connection : ConnectionManager.getConnections()) {
                 connection.requestBi(new ClientDetectionServerRequest());
@@ -146,11 +148,37 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
      */
     protected abstract void doInit(Properties properties);
 
+    @Override
+    public void close() {
+        if (this.server != null) {
+            log.info("Shutdown server {}", this.server);
+            try {
+                this.server.shutdown();
+                ConnectionManager.removeAndCloseAll();
+                this.server.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (Exception ignore) {
+                // ignore
+                this.server.shutdownNow();
+            }
+        }
+
+        if (this.scheduledExecutor != null && !this.scheduledExecutor.isShutdown()) {
+            log.info("Shutdown scheduledExecutor {}", scheduledExecutor);
+            this.scheduledExecutor.shutdown();
+        }
+
+        // Finally shutdown executor.
+        if (this.executor != null && !this.executor.isShutdown()) {
+            log.info("Shutdown executor {}", executor);
+            this.executor.shutdown();
+        }
+    }
+
     protected ThreadPoolExecutor createServerExecutor(int port) {
         return new ThreadPoolExecutor(
                 Math.max(2, Runtime.getRuntime().availableProcessors()),
                 Math.max(4, Runtime.getRuntime().availableProcessors() * 2),
-                10L, TimeUnit.SECONDS,
+                60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(10000),
                 new ThreadFactoryBuilder()
                         .setDaemon(true)
@@ -158,14 +186,14 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         .build());
     }
 
-    static class OpcGrpcServiceImpl extends OpcGrpcServiceGrpc.OpcGrpcServiceImplBase {
+    class OpcGrpcServiceImpl extends OpcGrpcServiceGrpc.OpcGrpcServiceImplBase {
 
         @Override
         public void request(io.opc.rpc.core.grpc.auto.Payload requestPayload,
                 io.grpc.stub.StreamObserver<io.opc.rpc.core.grpc.auto.Payload> responseObserver) {
 
             final String connectionId = CONTEXT_KEY_CONN_ID.get();
-            io.opc.rpc.api.Payload payloadObj;
+            final io.opc.rpc.api.Payload payloadObj;
             try {
                 payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
             } catch (Throwable throwable) {
@@ -194,12 +222,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 final ClientRequest clientRequest = (ClientRequest) payloadObj;
                 Response response = RequestHandlerSupport.handleRequest(clientRequest);
                 if (response == null) {
-                    ErrorResponse errorResponse = ErrorResponse.build(501, "handleRequest get null");
-                    errorResponse.setRequestId(clientRequest.getRequestId());
-                    response = errorResponse;
-                } else if (response instanceof ServerResponse) {
-                    ((ServerResponse) response).setRequestId(clientRequest.getRequestId());
+                    response = ErrorResponse.build(501, "handleRequest get null");
                 }
+                response.setRequestId(clientRequest.getRequestId());
                 responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response, Collections.emptyMap()));
                 responseObserver.onCompleted();
             }
@@ -232,7 +257,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 @Override
                 public void onNext(Payload requestPayload) {
 
-                    io.opc.rpc.api.Payload payloadObj;
+                    final io.opc.rpc.api.Payload payloadObj;
                     try {
                         payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
                     } catch (Throwable throwable) {
@@ -251,7 +276,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         final Map<String, String> labels = setupRequest.getLabels();
 
                         BaseConnection connection = GrpcConnection.builder()
-                                .channel(null).requestBiStreamObserver(responseObserver).build();
+                                .channel(null).biStreamObserver(responseObserver).build();
                         connection.setConnectionId(connectionId);
                         connection.setClientName(clientName);
                         connection.setLabels(labels);
@@ -267,12 +292,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         final ClientRequest clientRequest = (ClientRequest) payloadObj;
                         Response response = RequestHandlerSupport.handleRequest(clientRequest);
                         if (response == null) {
-                            ErrorResponse errorResponse = ErrorResponse.build(501, "handleRequest get null");
-                            errorResponse.setRequestId(clientRequest.getRequestId());
-                            response = errorResponse;
-                        } else if (response instanceof ServerResponse) {
-                            ((ServerResponse) response).setRequestId(clientRequest.getRequestId());
+                            response = ErrorResponse.build(501, "handleRequest get null");
                         }
+                        response.setRequestId(clientRequest.getRequestId());
                         responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response, Collections.emptyMap()));
                     }
                     // ClientResponse
@@ -311,6 +333,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 private void completeResponseObserver(StreamObserver<Payload> responseObserver) {
                     if (responseObserver instanceof ServerCallStreamObserver) {
                         ServerCallStreamObserver<?> serverCallStreamObserver = ((ServerCallStreamObserver<?>) responseObserver);
+                        // isCancelled means client close the stream.
                         if (!serverCallStreamObserver.isCancelled()) {
                             serverCallStreamObserver.onCompleted();
                         }

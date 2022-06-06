@@ -11,19 +11,21 @@ import org.junit.Test;
 /**
  * DefaultOpcRpcServerTest.
  *
- * @author hongwen.chw@antgroup.com
- * @version : DefaultOpcRpcServerTest, v0.1 2022-06-05 14:57 mengyuan Exp $
+ * @author caihongwen
+ * @version : DefaultOpcRpcServerTest, v0.1 2022-06-05 14:57 caihongwen Exp $
  */
 public class DefaultOpcRpcServerTest {
 
     @Test
     @Ignore
-    public void doInit() throws InterruptedException {
+    public void doInit() throws Exception {
         final Properties properties = new Properties();
         final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties);
 
         Assert.assertNotNull(rpcServer);
         TimeUnit.SECONDS.sleep(20);
+        rpcServer.close();
+        TimeUnit.MILLISECONDS.sleep(100);
     }
 
 }

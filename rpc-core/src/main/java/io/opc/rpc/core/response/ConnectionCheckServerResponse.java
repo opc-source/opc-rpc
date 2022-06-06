@@ -8,8 +8,8 @@ import lombok.Setter;
 /**
  * ConnectionCheckServerResponse.
  *
- * @author mengyuan
- * @version Id: ConnectionCheckServerResponse.java, v 0.1 2022年06月03日 11:52 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ConnectionCheckServerResponse.java, v 0.1 2022年06月03日 11:52 caihongwen Exp $
  */
 @Internal
 @Getter

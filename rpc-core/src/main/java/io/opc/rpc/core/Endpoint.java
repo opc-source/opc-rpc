@@ -32,4 +32,12 @@ public class Endpoint {
         return this.ip + COLON + this.port;
     }
 
+    @Override
+    public String toString() {
+        return "Endpoint{" +
+                "ip='" + ip + '\'' +
+                ", port=" + port +
+                '}';
+    }
+
 }

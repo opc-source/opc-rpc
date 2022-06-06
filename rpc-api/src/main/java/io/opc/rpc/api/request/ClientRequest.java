@@ -6,21 +6,15 @@ package io.opc.rpc.api.request;
  * @author caihongwen
  * @version Id: ClientRequest.java, v 0.1 2022年06月02日 21:44 caihongwen Exp $
  */
-public abstract class ClientRequest implements Request {
+public abstract class ClientRequest extends Request {
 
     /**
      * odd by client.
      */
     private static final RequestIdHelper REQUEST_ID_HELPER = new RequestIdHelper(1, 2);
 
-    /**
-     * RequestId generate on construct.
-     */
-    protected final String requestId = REQUEST_ID_HELPER.generateRequestId();
-
-    @Override
-    public String getRequestId() {
-        return requestId;
+    protected String generateRequestId() {
+        return REQUEST_ID_HELPER.generateRequestId();
     }
 
 }

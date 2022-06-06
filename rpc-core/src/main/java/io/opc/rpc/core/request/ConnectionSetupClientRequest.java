@@ -10,8 +10,8 @@ import lombok.Setter;
 /**
  * ConnectionSetupClientRequest.
  *
- * @author mengyuan
- * @version Id: ConnectionSetupClientRequest.java, v 0.1 2022年06月03日 11:17 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ConnectionSetupClientRequest.java, v 0.1 2022年06月03日 11:17 caihongwen Exp $
  */
 @Internal
 @Getter

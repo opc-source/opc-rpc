@@ -8,8 +8,8 @@ import java.lang.reflect.ParameterizedType;
 /**
  * BaseRequestHandler.
  *
- * @author mengyuan
- * @version Id: BaseRequestHandler.java, v 0.1 2022年06月05日 17:09 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: BaseRequestHandler.java, v 0.1 2022年06月05日 17:09 caihongwen Exp $
  */
 public abstract class BaseRequestHandler<Req extends Request, Resp extends Response> implements RequestHandler<Req, Resp> {
 

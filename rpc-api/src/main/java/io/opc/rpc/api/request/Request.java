@@ -8,13 +8,26 @@ import io.opc.rpc.api.Payload;
  * @author caihongwen
  * @version Id: Request.java, v 0.1 2022年06月02日 21:42 caihongwen Exp $
  */
-public interface Request extends Payload {
+public abstract class Request implements Payload {
+
+    {
+        requestId = generateRequestId();
+    }
+
+    protected abstract String generateRequestId();
 
     /**
-     * Get requestId.
-     *
-     * @return requestId
+     * RequestId generate on construct.
      */
-    String getRequestId();
+    protected final String requestId;
+
+    /**
+     * Getter method for property <tt>requestId</tt>.
+     *
+     * @return property value of requestId
+     */
+    public String getRequestId() {
+        return requestId;
+    }
 
 }

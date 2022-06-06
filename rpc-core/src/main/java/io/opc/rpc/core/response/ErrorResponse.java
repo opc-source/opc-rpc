@@ -3,20 +3,16 @@ package io.opc.rpc.core.response;
 import io.opc.rpc.api.response.Response;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 /**
  * ErrorResponse. ErrorResponse for Client and Server.
  *
- * @author mengyuan
- * @version Id: ErrorResponse.java, v 0.1 2022年06月03日 11:52 mengyuan Exp $
+ * @author caihongwen
+ * @version Id: ErrorResponse.java, v 0.1 2022年06月03日 11:52 caihongwen Exp $
  */
 @Getter
 @Setter
-@ToString(callSuper = true)
-public class ErrorResponse implements Response {
-
-    private String requestId;
+public class ErrorResponse extends Response {
 
     private int errorCode;
 
@@ -34,6 +30,15 @@ public class ErrorResponse implements Response {
         response.setErrorCode(errorCode);
         response.setMessage(msg);
         return response;
+    }
+
+    @Override
+    public String toString() {
+        return "ErrorResponse{" +
+                "requestId='" + requestId + '\'' +
+                ", errorCode=" + errorCode +
+                ", message='" + message + '\'' +
+                '}';
     }
 
 }

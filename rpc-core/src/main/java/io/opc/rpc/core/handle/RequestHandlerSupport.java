@@ -9,8 +9,8 @@ import lombok.experimental.UtilityClass;
 /**
  * RequestHandlerSupport.
  *
- * @author mengyuan
- * @version Id : RequestHandlerSupport.java, v 0.1 2022年06月05日 17:19 mengyuan Exp $
+ * @author caihongwen
+ * @version Id : RequestHandlerSupport.java, v 0.1 2022年06月05日 17:19 caihongwen Exp $
  */
 @UtilityClass
 public class RequestHandlerSupport {
