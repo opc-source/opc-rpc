@@ -26,6 +26,15 @@ public abstract class BaseConnection implements Connection {
 
     private Map<String, String> labels;
 
+    private long lastActiveTime = System.currentTimeMillis();
+
+    /**
+     * refresh {@link #lastActiveTime} to {@link System#currentTimeMillis()}
+     */
+    public void refreshLastActiveTime() {
+        this.lastActiveTime = System.currentTimeMillis();
+    }
+
     @Override
     public String toString() {
         return "Connection{" +
