@@ -31,7 +31,7 @@ public abstract class BaseConnection implements Connection {
     /**
      * refresh {@link #lastActiveTime} to {@link System#currentTimeMillis()}
      */
-    public void refreshLastActiveTime() {
+    public void refreshActiveTime() {
         this.lastActiveTime = System.currentTimeMillis();
     }
 

@@ -58,6 +58,11 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
+    /**
+     * KEEP_ACTIVE_TIME_MILLIS, 4 * times than client' health check server
+     */
+    private static final long KEEP_ACTIVE_TIME_MILLIS = TimeUnit.SECONDS.toMillis(20);
+
     protected ThreadPoolExecutor executor;
 
     protected ScheduledThreadPoolExecutor scheduledExecutor;
@@ -132,7 +137,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 r -> new Thread(r, "io.opc.rpc.core.OpcRpcServerScheduler"));
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             // last active timeout will do check with ClientDetectionServerRequest
-            for (Connection connection : ConnectionManager.getActiveTimeoutConnections()) {
+            for (Connection connection : ConnectionManager.getActiveTimeoutConnections(KEEP_ACTIVE_TIME_MILLIS)) {
                 // TODO or requestBi timeout, maybe client busy(apparent death)
                 try {
                     connection.requestBi(new ClientDetectionServerRequest());
