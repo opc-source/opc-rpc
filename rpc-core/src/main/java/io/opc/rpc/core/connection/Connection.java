@@ -1,6 +1,7 @@
-package io.opc.rpc.core;
+package io.opc.rpc.core.connection;
 
 import io.opc.rpc.api.Payload;
+import io.opc.rpc.core.Endpoint;
 
 /**
  * Connection.

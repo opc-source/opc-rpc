@@ -4,17 +4,17 @@ import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.core.annotation.Internal;
 
 /**
- * ConnectionCheckClientRequest.
+ * ConnectionInitClientRequest.
  *
  * @author caihongwen
- * @version Id: ConnectionCheckClientRequest.java, v 0.1 2022年06月03日 11:17 caihongwen Exp $
+ * @version Id: ConnectionInitClientRequest.java, v 0.1 2022年06月03日 11:17 caihongwen Exp $
  */
 @Internal
-public class ConnectionCheckClientRequest extends ClientRequest {
+public class ConnectionInitClientRequest extends ClientRequest {
 
     @Override
     public String toString() {
-        return "ConnectionCheckClientRequest{" +
+        return "ConnectionInitClientRequest{" +
                 "requestId='" + requestId + '\'' +
                 '}';
     }

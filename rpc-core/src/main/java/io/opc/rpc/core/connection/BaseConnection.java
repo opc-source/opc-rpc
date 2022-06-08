@@ -1,5 +1,6 @@
-package io.opc.rpc.core;
+package io.opc.rpc.core.connection;
 
+import io.opc.rpc.core.Endpoint;
 import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

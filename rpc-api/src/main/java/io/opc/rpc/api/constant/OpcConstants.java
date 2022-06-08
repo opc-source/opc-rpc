@@ -1,6 +1,8 @@
 
 package io.opc.rpc.api.constant;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Opc Constants.
  *
@@ -28,6 +30,16 @@ public interface OpcConstants {
          */
         String KEY_OPC_RPC_CLIENT_SERVER_ADDRESS = "opc.rpc.client.serverAddress";
 
+        /**
+         * opc.rpc.client.keepActive=5000L
+         */
+        String KEY_OPC_RPC_CLIENT_KEEP_ACTIVE = "opc.rpc.client.keepActive";
+
+        /**
+         * default 5000L
+         */
+        long DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE = TimeUnit.SECONDS.toMillis(5);
+
     }
 
     interface Server {
@@ -41,6 +53,16 @@ public interface OpcConstants {
          * 6666
          */
         int DEFAULT_OPC_RPC_SERVER_PORT = 6666;
+
+        /**
+         * opc.rpc.server.keepActive=20000L
+         */
+        String KEY_OPC_RPC_SERVER_KEEP_ACTIVE = "opc.rpc.server.keepActive";
+
+        /**
+         * default 20000L, 4 * times than client' health check server
+         */
+        long DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE = 4 * Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE;
 
     }
 

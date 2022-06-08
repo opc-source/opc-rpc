@@ -1,4 +1,4 @@
-package io.opc.rpc.core;
+package io.opc.rpc.core.connection;
 
 import java.util.Collection;
 import java.util.Map;
@@ -105,6 +105,17 @@ public class ConnectionManager {
         return connections.stream().filter(conn ->
                         (conn instanceof BaseConnection) && (now - timeout > ((BaseConnection) conn).getLastActiveTime()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * is active timeout.
+     *
+     * @param connection Connection
+     * @param timeout timeout
+     */
+    public static boolean isActiveTimeout(final Connection connection, final long timeout) {
+        final long now = System.currentTimeMillis();
+        return (connection instanceof BaseConnection) && (now - timeout > ((BaseConnection) connection).getLastActiveTime());
     }
 
 }

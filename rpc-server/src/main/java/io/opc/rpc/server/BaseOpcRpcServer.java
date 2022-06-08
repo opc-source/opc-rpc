@@ -22,23 +22,24 @@ import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.Response;
-import io.opc.rpc.core.BaseConnection;
-import io.opc.rpc.core.Connection;
-import io.opc.rpc.core.ConnectionManager;
-import io.opc.rpc.core.GrpcConnection;
+import io.opc.rpc.core.connection.BaseConnection;
+import io.opc.rpc.core.connection.Connection;
+import io.opc.rpc.core.connection.ConnectionManager;
+import io.opc.rpc.core.connection.GrpcConnection;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
 import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.request.ClientDetectionServerRequest;
-import io.opc.rpc.core.request.ConnectionCheckClientRequest;
+import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
-import io.opc.rpc.core.response.ConnectionCheckServerResponse;
+import io.opc.rpc.core.request.ServerDetectionClientRequest;
+import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
 import io.opc.rpc.core.response.ErrorResponse;
+import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -58,10 +59,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    /**
-     * KEEP_ACTIVE_TIME_MILLIS, 4 * times than client' health check server
-     */
-    private static final long KEEP_ACTIVE_TIME_MILLIS = TimeUnit.SECONDS.toMillis(20);
+    protected long keepActive = OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE;
 
     protected ThreadPoolExecutor executor;
 
@@ -72,9 +70,10 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
     @Override
     public void init(Properties properties) {
 
-        Integer serverPort = (Integer) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT,
+        this.keepActive = (Long) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_KEEP_ACTIVE,
+                OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE);
+        final Integer serverPort = (Integer) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT,
                 OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
-
         this.executor = createServerExecutor(serverPort);
 
         // server interceptor to set connection id.
@@ -135,9 +134,10 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,
                 r -> new Thread(r, "io.opc.rpc.core.OpcRpcServerScheduler"));
+        // keepActive in server
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             // last active timeout will do check with ClientDetectionServerRequest
-            for (Connection connection : ConnectionManager.getActiveTimeoutConnections(KEEP_ACTIVE_TIME_MILLIS)) {
+            for (Connection connection : ConnectionManager.getActiveTimeoutConnections(this.keepActive)) {
                 // TODO or requestBi timeout, maybe client busy(apparent death)
                 try {
                     connection.requestBi(new ClientDetectionServerRequest());
@@ -149,7 +149,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     ConnectionManager.removeAndClose(connection.getConnectionId());
                 }
             }
-        }, 1000L, 3000L, TimeUnit.MILLISECONDS);
+        }, 1000L, 1000L, TimeUnit.MILLISECONDS);
 
         // subclass init
         this.doInit(properties);
@@ -216,21 +216,21 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             } catch (Throwable throwable) {
                 log.error("[{}]Grpc request,payload deserialize error", connectionId, throwable);
                 ErrorResponse errorResponse = ErrorResponse.build(500, throwable.getMessage());
-                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse, Collections.emptyMap()));
+                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                 responseObserver.onCompleted();
                 return;
             }
 
-            // ConnectionCheck
-            if (payloadObj instanceof ConnectionCheckClientRequest) {
-                log.info("[{}]Grpc request,receive an ConnectionCheckClientRequest,payloadObj={}", connectionId, payloadObj);
-                ConnectionCheckClientRequest checkRequest = (ConnectionCheckClientRequest) payloadObj;
+            // ConnectionInitClientRequest
+            if (payloadObj instanceof ConnectionInitClientRequest) {
+                log.info("[{}]Grpc request,receive an ConnectionInitClientRequest,payloadObj={}", connectionId, payloadObj);
+                ConnectionInitClientRequest initRequest = (ConnectionInitClientRequest) payloadObj;
 
-                ConnectionCheckServerResponse checkResponse = new ConnectionCheckServerResponse();
-                checkResponse.setRequestId(checkRequest.getRequestId());
-                checkResponse.setConnectionId(connectionId);
+                ConnectionInitServerResponse initResponse = new ConnectionInitServerResponse();
+                initResponse.setRequestId(initRequest.getRequestId());
+                initResponse.setConnectionId(connectionId);
 
-                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(checkResponse, Collections.emptyMap()));
+                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(initResponse));
                 responseObserver.onCompleted();
             }
             // ClientRequest
@@ -242,7 +242,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     response = ErrorResponse.build(501, "handleRequest get null");
                 }
                 response.setRequestId(clientRequest.getRequestId());
-                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response, Collections.emptyMap()));
+                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
                 responseObserver.onCompleted();
             }
             // ErrorResponse
@@ -253,7 +253,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             else {
                 log.warn("[{}]Grpc request,receive unsupported payload,payloadObj={}", connectionId, payloadObj);
                 ErrorResponse errorResponse = ErrorResponse.build(500, "unsupported payload");
-                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse, Collections.emptyMap()));
+                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
             }
         }
 
@@ -281,7 +281,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     } catch (Throwable throwable) {
                         log.error("[{}]Grpc request bi stream,payload deserialize error", connectionId, throwable);
                         ErrorResponse errorResponse = ErrorResponse.build(500, throwable.getMessage());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse, Collections.emptyMap()));
+                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                         return;
                     }
 
@@ -293,8 +293,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         final String clientName = setupRequest.getClientName();
                         final Map<String, String> labels = setupRequest.getLabels();
 
-                        BaseConnection connection = GrpcConnection.builder()
-                                .channel(null).biStreamObserver(responseObserver).build();
+                        BaseConnection connection = GrpcConnection.builder().biStreamObserver(responseObserver).build();
                         connection.setConnectionId(connectionId);
                         connection.setClientName(clientName);
                         connection.setLabels(labels);
@@ -302,7 +301,16 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
                         ConnectionSetupServerResponse setupResponse = new ConnectionSetupServerResponse();
                         setupResponse.setRequestId(setupRequest.getRequestId());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(setupResponse, Collections.emptyMap()));
+                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(setupResponse));
+                    }
+                    // ServerDetectionClientRequest
+                    else if (payloadObj instanceof ServerDetectionClientRequest) {
+                        log.debug("[{}]Grpc request,receive an ServerDetectionClientRequest,payloadObj={}", connectionId, payloadObj);
+                        ServerDetectionClientRequest detectionRequest = (ServerDetectionClientRequest) payloadObj;
+
+                        ServerDetectionServerResponse detectionResponse = new ServerDetectionServerResponse();
+                        detectionResponse.setRequestId(detectionRequest.getRequestId());
+                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(detectionResponse));
                     }
                     // ClientRequest
                     else if (payloadObj instanceof ClientRequest) {
@@ -313,7 +321,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                             response = ErrorResponse.build(501, "handleRequest get null");
                         }
                         response.setRequestId(clientRequest.getRequestId());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response, Collections.emptyMap()));
+                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
                     }
                     // ClientResponse
                     else if (payloadObj instanceof ClientResponse) {
@@ -332,7 +340,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     else {
                         log.warn("[{}]Grpc request bi stream,receive unsupported payload,payloadObj={}", connectionId, payloadObj);
                         ErrorResponse errorResponse = ErrorResponse.build(500, "unsupported payload");
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse, Collections.emptyMap()));
+                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                     }
                 }
 

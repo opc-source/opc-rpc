@@ -2,7 +2,8 @@ package io.opc.rpc.core.util;
 
 import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
-import java.util.Map;
+import io.opc.rpc.api.request.Request;
+import java.util.Collections;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -14,19 +15,31 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class PayloadObjectHelper {
 
+    private static final io.opc.rpc.core.grpc.auto.Metadata EMPTY = io.opc.rpc.core.grpc.auto.Metadata.newBuilder()
+            .putAllHeaders(Collections.emptyMap())
+            .build();
+
     public <T extends io.opc.rpc.api.Payload> T buildApiPayload(io.opc.rpc.core.grpc.auto.Payload grpcPayload) {
 
-        return JsonSerialization.deserialize(
+        final T apiPayload = JsonSerialization.deserialize(
                 grpcPayload.getBody().getValue().toStringUtf8(),
                 PayloadClassHelper.getClass(grpcPayload.getBody().getTypeUrl())
         );
+        if (apiPayload instanceof Request) {
+            ((Request) apiPayload).setHeaders(grpcPayload.getMetadata().getHeadersMap());
+        }
+        return apiPayload;
     }
 
-    public <T extends io.opc.rpc.api.Payload> io.opc.rpc.core.grpc.auto.Payload buildGrpcPayload(
-            T apiPayload, Map<String, String> headers) {
+    public <T extends io.opc.rpc.api.Payload> io.opc.rpc.core.grpc.auto.Payload buildGrpcPayload(T apiPayload) {
 
+        io.opc.rpc.core.grpc.auto.Metadata metadata = EMPTY;
+        if (apiPayload instanceof Request) {
+            metadata = io.opc.rpc.core.grpc.auto.Metadata.newBuilder()
+                    .putAllHeaders(((Request) apiPayload).getHeaders()).build();
+        }
         return io.opc.rpc.core.grpc.auto.Payload.newBuilder()
-                .setMetadata(io.opc.rpc.core.grpc.auto.Metadata.newBuilder().putAllHeaders(headers).build())
+                .setMetadata(metadata)
                 .setBody(Any.newBuilder()
                         .setTypeUrl(apiPayload.getClass().getName())
                         .setValue(ByteString.copyFromUtf8(JsonSerialization.serialize(apiPayload)))

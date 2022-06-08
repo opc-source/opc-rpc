@@ -1,11 +1,13 @@
 package io.opc.rpc.core.util;
 
 import io.opc.rpc.core.handle.ClientDetectionRequestHandler;
-import io.opc.rpc.core.request.ConnectionCheckClientRequest;
+import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
-import io.opc.rpc.core.response.ConnectionCheckServerResponse;
+import io.opc.rpc.core.request.ServerDetectionClientRequest;
+import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
 import io.opc.rpc.core.response.ErrorResponse;
+import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
@@ -43,8 +45,9 @@ public class PayloadClassHelper {
         ALL_CLASS_NAP = new ConcurrentHashMap<>(32);
 
         // register all @Internal class, Request & Response
-        register(ConnectionCheckClientRequest.class, ConnectionCheckServerResponse.class);
+        register(ConnectionInitClientRequest.class, ConnectionInitServerResponse.class);
         register(ConnectionSetupClientRequest.class, ConnectionSetupServerResponse.class);
+        register(ServerDetectionClientRequest.class, ServerDetectionServerResponse.class);
         register(ErrorResponse.class);
 
         // TODO how to init?
