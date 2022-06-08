@@ -21,8 +21,8 @@ public class DefaultOpcRpcClientTest {
     @Ignore
     public void doInit() throws Exception {
         final Properties properties = new Properties();
-        properties.setProperty(OpcConstants.KEY_OPC_RPC_CLIENT_NAME, "localTest");
-        properties.setProperty(OpcConstants.Server.KEY_OPC_RPC_SERVER_HOST, "localhost");
+        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_NAME, "localTest");
+        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost,127.0.0.1:6666");
 
         final OpcRpcClient rpcClient = OpcRpcFactory.createOpcClient(properties);
         rpcClient.init(properties);

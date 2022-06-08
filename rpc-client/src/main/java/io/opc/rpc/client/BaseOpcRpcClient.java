@@ -8,7 +8,6 @@ import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.request.ServerRequest;
-import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.Connection;
@@ -26,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -61,9 +61,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     protected Map<String, String> labels = new HashMap<>();
 
     /**
-     * Server Endpoint.
+     * Server Endpoint Set.
      */
-    protected Endpoint endpoint;
+    protected Set<Endpoint> endpoints;
 
     protected ThreadPoolExecutor executor;
 
@@ -82,19 +82,12 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             return;
         }
 
-        String serverHost = properties.getProperty(OpcConstants.Server.KEY_OPC_RPC_SERVER_HOST);
-        Integer serverPort = (Integer) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT,
-                OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
-        this.endpoint = new Endpoint(serverHost, serverPort);
+        // eg: localhost:12345,domain:12344,127.0.0.1:12343
+        final String serverAddress = properties.getProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS);
+        this.clientName = (String) properties.getOrDefault(OpcConstants.Client.KEY_OPC_RPC_CLIENT_NAME, serverAddress);
+        this.endpoints = Endpoint.resolveServerAddress(serverAddress);
 
-        this.clientName = (String) properties.getOrDefault(OpcConstants.KEY_OPC_RPC_CLIENT_NAME, this.endpoint.getAddress());
-
-        this.currentConnection = this.connectToServer(this.endpoint);
-        if (this.currentConnection == null) {
-            log.error("connect to server failed. do asyncSwitchServer.");
-            this.asyncSwitchServer();
-        }
-
+        this.executor = createClientExecutor(serverAddress);
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1, r -> {
             Thread t = new Thread(r);
             t.setName("io.opc.rpc.core.OpcRpcClientScheduler");
@@ -110,11 +103,22 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
         // subclass init
         this.doInit(properties);
+
+        // Finally do connectToServer
+        this.currentConnection = this.connectToServer(Endpoint.randomOne(this.endpoints));
+        if (this.currentConnection == null) {
+            log.error("connect to server failed. do asyncSwitchServer.");
+            this.asyncSwitchServer();
+        }
     }
 
     protected void asyncSwitchServer() {
-        // TODO switch endpoint from list
-        this.reconnectionSignal.offer(this.endpoint);
+        // switch one endpoint from list(endpoints)
+        if (this.currentConnection == null) {
+            this.reconnectionSignal.offer(Endpoint.randomOne(this.endpoints));
+        } else {
+            this.reconnectionSignal.offer(Endpoint.randomOneExclude(this.endpoints, this.currentConnection.getEndpoint()));
+        }
     }
 
     protected void reconnect(@Nonnull final Endpoint endpoint) {
@@ -123,14 +127,16 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             log.error("reconnect to server failed. do asyncSwitchServer.");
             this.asyncSwitchServer();
         } else {
+            final Connection oldConn = this.currentConnection;
+            if (oldConn != null) {
+                log.info("reconnect new connection {}, async close old connection {}", connection, oldConn);
+                this.scheduledExecutor.execute(oldConn::close);
+            }
             this.currentConnection = connection;
         }
     }
 
     protected Connection connectToServer(@Nonnull final Endpoint endpoint) {
-        if (this.executor == null) {
-            this.executor = createClientExecutor(this.endpoint.getAddress());
-        }
         // Create a communication channel to the server, known as a Channel. Channels are thread-safe
         // and reusable. It is common to create channels at the beginning of your application and reuse
         // them until the application shuts down.
@@ -138,7 +144,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 // Channels are secure by default (via SSL/TLS). For the example we disable TLS to avoid
                 // needing certificates.
                 .usePlaintext()
-                .executor(executor)
+                .executor(this.executor)
                 .build();
         // future stub
         OpcGrpcServiceGrpc.OpcGrpcServiceFutureStub opcGrpcServiceFutureStub = OpcGrpcServiceGrpc.newFutureStub(channel);

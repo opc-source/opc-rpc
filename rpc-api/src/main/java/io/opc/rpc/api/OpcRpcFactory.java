@@ -19,15 +19,14 @@ public class OpcRpcFactory {
     /**
      * Create OpcClient.
      *
-     * @param serverHost host or ip
+     * @param serverAddress host:port or ip:port, eg: localhost:12345,domain:12344,127.0.0.1:12343
      * @return {@link OpcRpcClient}
      */
-    public OpcRpcClient createOpcClient(String serverHost) {
-        Objects.requireNonNull(serverHost, "serverHost is null");
+    public OpcRpcClient createOpcClient(String serverAddress) {
+        Objects.requireNonNull(serverAddress, "serverAddress is null");
 
         Properties properties = new Properties();
-        properties.put(OpcConstants.Server.KEY_OPC_RPC_SERVER_HOST, serverHost);
-        properties.put(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT, OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
+        properties.put(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, serverAddress);
         return createOpcClient(properties);
     }
 
