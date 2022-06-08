@@ -2,9 +2,11 @@ package io.opc.rpc.core.util;
 
 import io.opc.rpc.core.handle.ClientDetectionRequestHandler;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
+import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
+import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
 import io.opc.rpc.core.response.ErrorResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
@@ -48,6 +50,7 @@ public class PayloadClassHelper {
         register(ConnectionInitClientRequest.class, ConnectionInitServerResponse.class);
         register(ConnectionSetupClientRequest.class, ConnectionSetupServerResponse.class);
         register(ServerDetectionClientRequest.class, ServerDetectionServerResponse.class);
+        register(ConnectionResetServerRequest.class, ConnectionResetClientResponse.class);
         register(ErrorResponse.class);
 
         // TODO how to init?

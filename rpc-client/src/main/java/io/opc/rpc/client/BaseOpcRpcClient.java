@@ -19,9 +19,11 @@ import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
 import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
+import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
+import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ErrorResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import io.opc.rpc.core.util.PayloadObjectHelper;
@@ -38,6 +40,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,8 +133,16 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         final Endpoint endpoint = Endpoint.randomOne(this.endpoints);
         this.currentConnection = this.connectToServer(endpoint);
         if (this.currentConnection == null) {
-            log.error("connect to server failed. do asyncSwitchServer.");
+            log.error("connect to server failed. do asyncSwitchServerExclude {}.", endpoint.getAddress());
             this.asyncSwitchServerExclude(endpoint);
+        }
+    }
+
+    protected void asyncSwitchServer(@Nullable Endpoint target) {
+        if (target != null) {
+            this.reconnectionSignal.offer(target);
+        } else {
+            this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
         }
     }
 
@@ -143,7 +154,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     protected void reconnect(@Nonnull final Endpoint endpoint) {
         Connection connection = this.connectToServer(endpoint);
         if (connection == null) {
-            log.error("reconnect to server failed. do asyncSwitchServer.");
+            log.error("reconnect to server failed. do asyncSwitchServerExclude {}.", endpoint.getAddress());
             this.asyncSwitchServerExclude(endpoint);
         } else {
             final Connection oldConn = this.currentConnection;
@@ -193,9 +204,24 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
             @Override
             public void onNext(Payload value) {
+                grpcConnection.refreshActiveTime();
+
                 final io.opc.rpc.api.Payload payloadObj = PayloadObjectHelper.buildApiPayload(value);
+                // ConnectionResetServerRequest
+                if (payloadObj instanceof ConnectionResetServerRequest) {
+                    log.warn("[{}] responseBiStreamObserver receive an ConnectionResetServerRequest,payloadObj={}",
+                            grpcConnection.getConnectionId(), payloadObj);
+                    final ConnectionResetServerRequest connectionResetRequest = (ConnectionResetServerRequest) payloadObj;
+
+                    BaseOpcRpcClient.this.asyncSwitchServer(connectionResetRequest.getEndpoint());
+
+                    final ConnectionResetClientResponse connectionResetResponse = new ConnectionResetClientResponse();
+                    connectionResetResponse.setRequestId(connectionResetRequest.getRequestId());
+                    // do response
+                    grpcConnection.requestBi(connectionResetResponse);
+                }
                 // ServerRequest
-                if (payloadObj instanceof ServerRequest) {
+                else if (payloadObj instanceof ServerRequest) {
                     log.info("[{}] responseBiStreamObserver receive an ServerRequest,payloadObj={}",
                             grpcConnection.getConnectionId(), payloadObj);
                     final ServerRequest serverRequest = (ServerRequest) payloadObj;
@@ -240,8 +266,6 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             @Override
             public void onCompleted() {
                 log.warn("[{}] responseBiStreamObserver on completed", grpcConnection.getConnectionId());
-                // TODO maybe same as onError()
-                BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
             }
         };
         final StreamObserver<Payload> requestBiStreamObserver = opcGrpcServiceStub.requestBiStream(responseBiStreamObserver);

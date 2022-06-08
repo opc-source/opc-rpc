@@ -4,17 +4,17 @@ import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.core.annotation.Internal;
 
 /**
- * ClientDetectionClientResponse. Detection response from Client.
+ * ConnectionResetClientResponse. Connection reset response from Client.
  *
  * @author caihongwen
- * @version Id: ClientDetectionClientResponse.java, v 0.1 2022年06月05日 21:08 caihongwen Exp $
+ * @version Id: ConnectionResetClientResponse.java, v 0.1 2022年06月05日 21:08 caihongwen Exp $
  */
 @Internal
-public class ClientDetectionClientResponse extends ClientResponse {
+public class ConnectionResetClientResponse extends ClientResponse {
 
     @Override
     public String toString() {
-        return "ClientDetectionClientResponse{" +
+        return "ConnectionResetClientResponse{" +
                 "requestId='" + requestId + '\'' +
                 '}';
     }
