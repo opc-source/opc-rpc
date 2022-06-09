@@ -2,8 +2,13 @@ package io.opc.rpc.core.connection;
 
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.opc.rpc.api.response.Response;
+import io.opc.rpc.core.RequestCallback;
+import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.util.PayloadObjectHelper;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,16 +24,40 @@ import lombok.Setter;
 @Builder
 public class GrpcConnection extends BaseConnection implements Connection {
 
+    /**
+     * requestStreamObserver in client.
+     * responseStreamObserver in server.
+     */
     protected StreamObserver<Payload> biStreamObserver;
 
-    @Override
-    public void requestBi(io.opc.rpc.api.Payload request) {
-        final Payload requestPayload = PayloadObjectHelper.buildGrpcPayload(request);
+    /**
+     * @param payload io.opc.rpc.api.Payload
+     */
+    protected void payloadNoAck(io.opc.rpc.api.Payload payload) {
+        final Payload grpcPayload = PayloadObjectHelper.buildGrpcPayload(payload);
         // StreamObserver#onNext() is not thread-safe, synchronized is required to avoid direct memory leak.
         synchronized (biStreamObserver) {
             // maybe connection already closed with throw StatusRuntimeException
-            biStreamObserver.onNext(requestPayload);
+            biStreamObserver.onNext(grpcPayload);
         }
+    }
+
+    @Override
+    public void asyncResponse(@Nonnull Response response) {
+        this.payloadNoAck(response);
+    }
+
+    @Override
+    public void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request,
+            @Nullable RequestCallback<? extends Response> requestCallback) {
+
+        // First async listening a Response with requestCallback(if not null).
+        if (requestCallback != null) {
+            RequestCallbackSupport.addCallback(this.getConnectionId(), request.getRequestId(), requestCallback);
+        }
+
+        // Finally do payloadNoAck.
+        this.payloadNoAck(request);
     }
 
     @Override

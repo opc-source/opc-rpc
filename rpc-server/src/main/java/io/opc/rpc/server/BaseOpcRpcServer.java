@@ -21,7 +21,10 @@ import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.response.ClientResponse;
+import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
+import io.opc.rpc.api.response.ResponseCode;
+import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.connection.BaseConnection;
 import io.opc.rpc.core.connection.Connection;
 import io.opc.rpc.core.connection.ConnectionManager;
@@ -35,7 +38,6 @@ import io.opc.rpc.core.request.ConnectionSetupClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
-import io.opc.rpc.core.response.ErrorResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.io.IOException;
@@ -140,7 +142,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             for (Connection connection : ConnectionManager.getActiveTimeoutConnections(this.keepActive)) {
                 // TODO or requestBi timeout, maybe client busy(apparent death)
                 try {
-                    connection.requestBi(new ClientDetectionServerRequest());
+                    connection.asyncRequest(new ClientDetectionServerRequest());
                 } catch (StatusRuntimeException statusEx) {
                     log.warn("[{}]Grpc requestBi ClientDetectionServerRequest statusEx", connection.getConnectionId(), statusEx);
                     ConnectionManager.removeAndClose(connection.getConnectionId());
@@ -215,7 +217,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
             } catch (Throwable throwable) {
                 log.error("[{}]Grpc request,payload deserialize error", connectionId, throwable);
-                ErrorResponse errorResponse = ErrorResponse.build(500, throwable.getMessage());
+                ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), throwable.getMessage());
                 responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                 responseObserver.onCompleted();
                 return;
@@ -239,20 +241,16 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 final ClientRequest clientRequest = (ClientRequest) payloadObj;
                 Response response = RequestHandlerSupport.handleRequest(clientRequest);
                 if (response == null) {
-                    response = ErrorResponse.build(501, "handleRequest get null");
+                    response = ErrorResponse.build(ResponseCode.HANDLE_REQUEST_NULL);
                 }
                 response.setRequestId(clientRequest.getRequestId());
                 responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
                 responseObserver.onCompleted();
             }
-            // ErrorResponse
-            else if (payloadObj instanceof ErrorResponse) {
-                log.error("[{}]Grpc request,receive an ErrorResponse,payloadObj={}", connectionId, payloadObj);
-            }
             // unsupported payload
             else {
                 log.warn("[{}]Grpc request,receive unsupported payload,payloadObj={}", connectionId, payloadObj);
-                ErrorResponse errorResponse = ErrorResponse.build(500, "unsupported payload");
+                ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.UNSUPPORTED_PAYLOAD);
                 responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
             }
         }
@@ -280,7 +278,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
                     } catch (Throwable throwable) {
                         log.error("[{}]Grpc request bi stream,payload deserialize error", connectionId, throwable);
-                        ErrorResponse errorResponse = ErrorResponse.build(500, throwable.getMessage());
+                        ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), throwable.getMessage());
                         responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                         return;
                     }
@@ -318,7 +316,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         final ClientRequest clientRequest = (ClientRequest) payloadObj;
                         Response response = RequestHandlerSupport.handleRequest(clientRequest);
                         if (response == null) {
-                            response = ErrorResponse.build(501, "handleRequest get null");
+                            response = ErrorResponse.build(ResponseCode.HANDLE_REQUEST_NULL);
                         }
                         response.setRequestId(clientRequest.getRequestId());
                         responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
@@ -326,20 +324,17 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     // ClientResponse
                     else if (payloadObj instanceof ClientResponse) {
                         log.info("[{}]Grpc request bi stream,receive an ClientResponse,payloadObj={}", connectionId, payloadObj);
-                        // TODO deal ServerResponse?
-                        ClientResponse response = (ClientResponse) payloadObj;
-                        final String requestId = response.getRequestId();
-                        //RpcAckCallbackSynchronizer.ackNotify(connectionId, response);
-                        //ConnectionManager.refreshActiveTime(connectionId);
+                        RequestCallbackSupport.notifyCallback(connectionId, (ClientResponse) payloadObj);
                     }
                     // ErrorResponse
                     else if (payloadObj instanceof ErrorResponse) {
                         log.error("[{}]Grpc request bi stream,receive an ErrorResponse,payloadObj={}", connectionId, payloadObj);
+                        RequestCallbackSupport.notifyCallback(connectionId, (ErrorResponse) payloadObj);
                     }
                     // unsupported payload
                     else {
                         log.warn("[{}]Grpc request bi stream,receive unsupported payload,payloadObj={}", connectionId, payloadObj);
-                        ErrorResponse errorResponse = ErrorResponse.build(500, "unsupported payload");
+                        ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.UNSUPPORTED_PAYLOAD);
                         responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                     }
                 }

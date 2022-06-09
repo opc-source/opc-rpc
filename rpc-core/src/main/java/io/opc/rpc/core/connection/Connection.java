@@ -1,7 +1,10 @@
 package io.opc.rpc.core.connection;
 
-import io.opc.rpc.api.Payload;
+import io.opc.rpc.api.response.Response;
 import io.opc.rpc.core.Endpoint;
+import io.opc.rpc.core.RequestCallback;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * Connection.
@@ -33,11 +36,28 @@ public interface Connection {
     Endpoint getEndpoint();
 
     /**
-     * requestBi.
+     * async back Response.
      *
-     * @param request Payload
+     * @param response Response
      */
-    void requestBi(Payload request);
+    void asyncResponse(@Nonnull io.opc.rpc.api.response.Response response);
+
+    /**
+     * async send Request.
+     *
+     * @param request Request
+     */
+    default void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request) {
+        asyncRequest(request, null);
+    }
+
+    /**
+     * async send Request. async listening a Response with RequestCallback.
+     *
+     * @param request Request
+     * @param requestCallback RequestCallback<R extends Response>, null means do not care about is.
+     */
+    void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request, @Nullable RequestCallback<? extends Response> requestCallback);
 
     /**
      * close.

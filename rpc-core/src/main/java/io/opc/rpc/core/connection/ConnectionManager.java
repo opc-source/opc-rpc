@@ -85,18 +85,6 @@ public class ConnectionManager {
     }
 
     /**
-     * refresh Connection's activeTime
-     *
-     * @param connectionId connectionId
-     */
-    public void refreshActiveTime(String connectionId) {
-        final Connection connection = getConnection(connectionId);
-        if (connection != null && connection instanceof BaseConnection) {
-            ((BaseConnection) connection).refreshActiveTime();
-        }
-    }
-
-    /**
      * get active timeout Connections
      */
     public Collection<Connection> getActiveTimeoutConnections(final long timeout) {
@@ -105,6 +93,27 @@ public class ConnectionManager {
         return connections.stream().filter(conn ->
                         (conn instanceof BaseConnection) && (now - timeout > ((BaseConnection) conn).getLastActiveTime()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * refresh Connection's activeTime
+     *
+     * @param connectionId connectionId
+     */
+    public void refreshActiveTime(String connectionId) {
+        final Connection connection = getConnection(connectionId);
+        refreshActiveTime(connection);
+    }
+
+    /**
+     * refresh Connection's activeTime
+     *
+     * @param connection Connection
+     */
+    public static void refreshActiveTime(final Connection connection) {
+        if (connection != null && connection instanceof BaseConnection) {
+            ((BaseConnection) connection).refreshActiveTime();
+        }
     }
 
     /**

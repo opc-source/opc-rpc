@@ -8,7 +8,7 @@ import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
-import io.opc.rpc.core.response.ErrorResponse;
+import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

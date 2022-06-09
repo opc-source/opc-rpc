@@ -2,16 +2,23 @@ package io.opc.rpc.client;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.MethodDescriptor;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.request.ServerRequest;
 import io.opc.rpc.api.response.Response;
+import io.opc.rpc.api.response.ResponseCode;
 import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.Endpoint;
+import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.connection.ClientGrpcConnection;
 import io.opc.rpc.core.connection.Connection;
 import io.opc.rpc.core.connection.ConnectionManager;
@@ -24,7 +31,8 @@ import io.opc.rpc.core.request.ConnectionSetupClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
-import io.opc.rpc.core.response.ErrorResponse;
+import io.opc.rpc.core.response.ConnectionSetupServerResponse;
+import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.util.HashMap;
@@ -115,7 +123,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             if (this.currentConnection != null && ConnectionManager.isActiveTimeout(this.currentConnection, this.keepActive)) {
                 // TODO or requestBi timeout, maybe server busy(apparent death)
                 try {
-                    this.currentConnection.requestBi(new ServerDetectionClientRequest());
+                    this.currentConnection.asyncRequest(new ServerDetectionClientRequest());
                 } catch (StatusRuntimeException statusEx) {
                     log.warn("[{}]requestBi ServerDetectionClientRequest statusEx", this.currentConnection.getConnectionId(), statusEx);
                     this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
@@ -124,7 +132,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                     this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
                 }
             }
-        }, this.keepActive * 2, this.keepActive, TimeUnit.MILLISECONDS);
+        }, this.keepActive * 2, 1000L, TimeUnit.MILLISECONDS);
 
         // subclass init
         this.doInit(properties);
@@ -175,6 +183,17 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 // needing certificates.
                 .usePlaintext()
                 .executor(this.executor)
+                .intercept(new ClientInterceptor() {
+                    @Override
+                    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
+                            CallOptions callOptions, Channel next) {
+                        // refresh connection activeTime for client,
+                        // but not be called in requestBiStreamObserver.onNext (which not completed)!!
+                        ConnectionManager.refreshActiveTime(BaseOpcRpcClient.this.currentConnection);
+                        return next.newCall(method, callOptions);
+                    }
+                })
+                //.keepAliveWithoutCalls() replace ServerDetectionClientRequest ?
                 .build();
         // future stub
         OpcGrpcServiceGrpc.OpcGrpcServiceFutureStub opcGrpcServiceFutureStub = OpcGrpcServiceGrpc.newFutureStub(channel);
@@ -204,6 +223,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
             @Override
             public void onNext(Payload value) {
+                // refresh connection activeTime for client
                 grpcConnection.refreshActiveTime();
 
                 final io.opc.rpc.api.Payload payloadObj = PayloadObjectHelper.buildApiPayload(value);
@@ -218,7 +238,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                     final ConnectionResetClientResponse connectionResetResponse = new ConnectionResetClientResponse();
                     connectionResetResponse.setRequestId(connectionResetRequest.getRequestId());
                     // do response
-                    grpcConnection.requestBi(connectionResetResponse);
+                    grpcConnection.asyncResponse(connectionResetResponse);
                 }
                 // ServerRequest
                 else if (payloadObj instanceof ServerRequest) {
@@ -227,27 +247,33 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                     final ServerRequest serverRequest = (ServerRequest) payloadObj;
                     Response response = RequestHandlerSupport.handleRequest(serverRequest);
                     if (response == null) {
-                        response = ErrorResponse.build(501, "handleRequest get null");
+                        response = ErrorResponse.build(ResponseCode.HANDLE_REQUEST_NULL);
                     }
                     response.setRequestId(serverRequest.getRequestId());
                     // do response
-                    grpcConnection.requestBi(response);
+                    grpcConnection.asyncResponse(response);
                 }
                 // ServerDetectionServerResponse
                 else if (payloadObj instanceof ServerDetectionServerResponse) {
                     log.debug("[{}] responseBiStreamObserver receive an ServerDetectionServerResponse,payloadObj={}",
                             grpcConnection.getConnectionId(), payloadObj);
                 }
+                // ConnectionSetupServerResponse
+                else if (payloadObj instanceof ConnectionSetupServerResponse) {
+                    log.debug("[{}] responseBiStreamObserver receive an ConnectionSetupServerResponse,payloadObj={}",
+                            grpcConnection.getConnectionId(), payloadObj);
+                }
                 // ServerResponse
                 else if (payloadObj instanceof ServerResponse) {
                     log.info("[{}] responseBiStreamObserver receive an ServerResponse,payloadObj={}",
                             grpcConnection.getConnectionId(), payloadObj);
-                    // TODO deal ServerResponse?
+                    RequestCallbackSupport.notifyCallback(grpcConnection.getConnectionId(), (ServerResponse) payloadObj);
                 }
                 // ErrorResponse
                 else if (payloadObj instanceof ErrorResponse) {
                     log.error("[{}] responseBiStreamObserver receive an ErrorResponse,payloadObj={}",
                             grpcConnection.getConnectionId(), payloadObj);
+                    RequestCallbackSupport.notifyCallback(grpcConnection.getConnectionId(), (ErrorResponse) payloadObj);
                 }
                 // unsupported payload
                 else {
@@ -258,14 +284,23 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
             @Override
             public void onError(Throwable t) {
-                log.error("[{}] responseBiStreamObserver on error, switch server async", grpcConnection.getConnectionId(), t);
+                log.error("[{}] responseBiStreamObserver on error, do asyncSwitchServerExclude {}.",
+                        grpcConnection.getConnectionId(), grpcConnection.getEndpoint().getAddress(), t);
                 // TODO set status=RpcClientStatus.UNHEALTHY ?
                 BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
             }
 
             @Override
             public void onCompleted() {
-                log.warn("[{}] responseBiStreamObserver on completed", grpcConnection.getConnectionId());
+                if (BaseOpcRpcClient.this.currentConnection == null || BaseOpcRpcClient.this.currentConnection == grpcConnection) {
+                    log.warn("[{}] responseBiStreamObserver on completed, do asyncSwitchServerExclude {}.",
+                            grpcConnection.getConnectionId(), grpcConnection.getEndpoint().getAddress());
+                    // not normal onCompleted, do asyncSwitchServerExclude
+                    BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
+                } else {
+                    // normal onCompleted
+                    log.warn("[{}] responseBiStreamObserver on completed", grpcConnection.getConnectionId());
+                }
             }
         };
         final StreamObserver<Payload> requestBiStreamObserver = opcGrpcServiceStub.requestBiStream(responseBiStreamObserver);
@@ -275,7 +310,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         final ConnectionSetupClientRequest setupClientRequest = ConnectionSetupClientRequest.builder()
                 .clientName(this.clientName)
                 .labels(this.labels).build();
-        grpcConnection.requestBi(setupClientRequest);
+        grpcConnection.asyncRequest(setupClientRequest);
 
         log.info("connect to server success,connection={} with serverAddress={}", grpcConnection.getConnectionId(), endpoint.getAddress());
         return grpcConnection;
