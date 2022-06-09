@@ -2,8 +2,8 @@ package io.opc.rpc.core.connection;
 
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.response.Response;
-import io.opc.rpc.core.RequestCallback;
 import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.util.PayloadObjectHelper;
@@ -63,6 +63,8 @@ public class GrpcConnection extends BaseConnection implements Connection {
     @Override
     public void close() {
         this.closeBiStream();
+
+        RequestCallbackSupport.clearContext(this.getConnectionId());
     }
 
     private void closeBiStream() {

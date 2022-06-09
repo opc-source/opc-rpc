@@ -1,5 +1,6 @@
 package io.opc.rpc.core.handle;
 
+import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.response.Response;
 import java.util.Map;

@@ -1,8 +1,8 @@
 package io.opc.rpc.core.connection;
 
+import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.core.Endpoint;
-import io.opc.rpc.core.RequestCallback;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 

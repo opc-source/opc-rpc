@@ -3,7 +3,7 @@ package io.opc.rpc.core.connection;
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.response.Response;
-import io.opc.rpc.core.RequestCallback;
+import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.core.grpc.auto.Payload;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;

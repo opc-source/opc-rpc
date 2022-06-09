@@ -12,7 +12,9 @@ import io.grpc.MethodDescriptor;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.OpcRpcClient;
+import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.request.ServerRequest;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ResponseCode;
@@ -333,6 +335,11 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
      * @param properties Properties
      */
     protected abstract void doInit(Properties properties);
+
+    @Override
+    public void asyncRequest(@Nonnull Request request, @Nullable RequestCallback<? extends Response> requestCallback) {
+        this.currentConnection.asyncRequest(request, requestCallback);
+    }
 
     @Override
     public void close() {
