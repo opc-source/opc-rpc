@@ -14,6 +14,7 @@ import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.request.ServerRequest;
 import io.opc.rpc.api.response.Response;
@@ -123,11 +124,10 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             // last active timeout will do check with ServerDetectionClientRequest
             if (this.currentConnection != null && ConnectionManager.isActiveTimeout(this.currentConnection, this.keepActive)) {
-                // TODO or requestBi timeout, maybe server busy(apparent death)
                 try {
                     this.currentConnection.asyncRequest(new ServerDetectionClientRequest());
-                } catch (StatusRuntimeException statusEx) {
-                    log.warn("[{}]requestBi ServerDetectionClientRequest statusEx", this.currentConnection.getConnectionId(), statusEx);
+                } catch (OpcConnectionException connEx) {
+                    log.warn("[{}]requestBi ServerDetectionClientRequest connEx", this.currentConnection.getConnectionId(), connEx);
                     this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
                 } catch (Exception unknownEx) {
                     log.error("[{}]requestBi ServerDetectionClientRequest error", this.currentConnection.getConnectionId(), unknownEx);

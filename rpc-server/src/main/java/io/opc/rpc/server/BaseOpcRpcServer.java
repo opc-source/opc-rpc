@@ -20,6 +20,7 @@ import io.grpc.util.MutableHandlerRegistry;
 import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.exception.ExceptionCode;
+import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.response.ClientResponse;
@@ -148,11 +149,10 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             // last active timeout will do check with ClientDetectionServerRequest
             for (Connection connection : ConnectionManager.getActiveTimeoutConnections(this.keepActive)) {
-                // TODO or requestBi timeout, maybe client busy(apparent death)
                 try {
                     connection.asyncRequest(new ClientDetectionServerRequest());
-                } catch (StatusRuntimeException statusEx) {
-                    log.warn("[{}]Grpc requestBi ClientDetectionServerRequest statusEx", connection.getConnectionId(), statusEx);
+                } catch (OpcConnectionException connEx) {
+                    log.warn("[{}]Grpc requestBi ClientDetectionServerRequest connEx", connection.getConnectionId(), connEx);
                     ConnectionManager.removeAndClose(connection.getConnectionId());
                 } catch (Exception unknownEx) {
                     log.error("[{}]Grpc requestBi ClientDetectionServerRequest error", connection.getConnectionId(), unknownEx);
