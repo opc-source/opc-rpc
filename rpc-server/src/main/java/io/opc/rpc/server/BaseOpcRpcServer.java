@@ -113,15 +113,19 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         InetSocketAddress localAddress = (InetSocketAddress) transportAttrs.get(Grpc.TRANSPORT_ATTR_LOCAL_ADDR);
                         String remoteIp = remoteAddress.getAddress().getHostAddress();
                         int remotePort = remoteAddress.getPort();
+                        String localIp = localAddress.getAddress().getHostAddress();
                         int localPort = localAddress.getPort();
+
+                        // eg: 1654890127537_127.0.0.1:59146_127.0.0.1:6666
+                        final String connectionId = System.currentTimeMillis() + "_" + remoteIp + ":" + remotePort
+                                + "_" + localIp + ":" + localPort;
                         Attributes attrWrapper = transportAttrs.toBuilder()
-                                .set(TRANS_KEY_CONN_ID, System.currentTimeMillis() + "_" + remoteIp + ":" + remotePort)
+                                .set(TRANS_KEY_CONN_ID, connectionId)
                                 .set(TRANS_KEY_REMOTE_IP, remoteIp)
                                 .set(TRANS_KEY_REMOTE_PORT, remotePort)
                                 .set(TRANS_KEY_LOCAL_PORT, localPort).build();
 
-                        final String connectionId = attrWrapper.get(TRANS_KEY_CONN_ID);
-                        log.info("Connection transportReady,connectionId = {} ", connectionId);
+                        log.info("Connection transportReady,connectionId={}", connectionId);
                         return attrWrapper;
                     }
 
@@ -129,7 +133,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     public void transportTerminated(Attributes transportAttrs) {
                         try {
                             String connectionId = transportAttrs.get(TRANS_KEY_CONN_ID);
-                            log.info("Connection transportTerminated,connectionId = {} ", connectionId);
+                            log.info("Connection transportTerminated,connectionId={}", connectionId);
                             ConnectionManager.removeAndClose(connectionId);
                         } catch (Exception e) {
                             // Ignore
