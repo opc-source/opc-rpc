@@ -40,6 +40,7 @@ public interface Connection {
      * async back Response.
      *
      * @param response Response
+     * @throws OpcConnectionException OpcConnectionException
      */
     void asyncResponse(@Nonnull io.opc.rpc.api.response.Response response) throws OpcConnectionException;
 
@@ -47,6 +48,7 @@ public interface Connection {
      * async send Request.
      *
      * @param request Request
+     * @throws OpcConnectionException OpcConnectionException
      */
     default void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request) throws OpcConnectionException {
         asyncRequest(request, null);
@@ -57,6 +59,7 @@ public interface Connection {
      *
      * @param request Request
      * @param requestCallback RequestCallback<R extends Response>, null means do not care about is.
+     * @throws OpcConnectionException OpcConnectionException
      */
     void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request, @Nullable RequestCallback<? extends Response> requestCallback)
             throws OpcConnectionException;

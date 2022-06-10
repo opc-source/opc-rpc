@@ -8,7 +8,6 @@ import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.constant.OpcConstants.Server;
 import io.opc.rpc.core.connection.Connection;
 import io.opc.rpc.core.connection.ConnectionManager;
-import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -48,9 +47,10 @@ public class TestServer {
         final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties2);
 
         PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
-        RequestHandlerSupport.register(ClientTestClientRequest.class, new ClientTestRequestHandler());
+        rpcServer.registerClientRequestHandler(ClientTestClientRequest.class, new ClientTestRequestHandler());
         PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
 
+        //noinspection AlibabaAvoidManuallyCreateThread
         new Thread(() -> {
             while (!STOP.get()) {
                 // ConnectionManager TODO rpcServer independent

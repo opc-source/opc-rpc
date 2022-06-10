@@ -7,9 +7,9 @@ import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.OpcRpcFactory;
 import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.response.ErrorResponse;
-import io.opc.rpc.api.response.Response;
-import io.opc.rpc.core.handle.RequestHandlerSupport;
+import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -58,37 +58,42 @@ public class TestClient {
 
         PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
         PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
-        RequestHandlerSupport.register(ServerTestServerRequest.class, new ServerTestRequestHandler());
+        rpcClient.registerServerRequestHandler(ServerTestServerRequest.class, new ServerTestRequestHandler());
 
+        //noinspection AlibabaAvoidManuallyCreateThread
         new Thread(() -> {
             while (!STOP.get()) {
                 final ClientTestClientRequest testClientRequest = new ClientTestClientRequest();
-                rpcClient.asyncRequest(testClientRequest, new RequestCallback<Response>() {
-                    @Override
-                    public Executor getExecutor() {
-                        return ForkJoinPool.commonPool();
-                    }
+                try {
+                    rpcClient.asyncRequest(testClientRequest, new RequestCallback<ServerResponse>() {
+                        @Override
+                        public Executor getExecutor() {
+                            return ForkJoinPool.commonPool();
+                        }
 
-                    @Override
-                    public long getTimeout() {
-                        return 1000L;
-                    }
+                        @Override
+                        public long getTimeout() {
+                            return 1000L;
+                        }
 
-                    @Override
-                    public void onTimeout() {
-                        log.error("onTimeout : {}", testClientRequest);
-                    }
+                        @Override
+                        public void onTimeout() {
+                            log.error("onTimeout : {}", testClientRequest);
+                        }
 
-                    @Override
-                    public void onResponse(Response response) {
-                        log.info("response : {}", response);
-                    }
+                        @Override
+                        public void onResponse(ServerResponse response) {
+                            log.info("response : {}", response);
+                        }
 
-                    @Override
-                    public void onError(ErrorResponse errorResponse) {
-                        log.error("onError : {}", errorResponse);
-                    }
-                });
+                        @Override
+                        public void onError(ErrorResponse errorResponse) {
+                            log.error("onError : {}", errorResponse);
+                        }
+                    });
+                } catch (OpcConnectionException exception) {
+                    log.error("rpcClient.asyncRequest error", exception);
+                }
 
                 try {
                     TimeUnit.MILLISECONDS.sleep(10);

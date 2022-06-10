@@ -17,15 +17,18 @@ import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.grpc.util.MutableHandlerRegistry;
 import io.opc.rpc.api.OpcRpcServer;
+import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import io.opc.rpc.api.request.ClientRequest;
+import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ResponseCode;
+import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.Endpoint;
 import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.connection.BaseConnection;
@@ -34,6 +37,7 @@ import io.opc.rpc.core.connection.ConnectionManager;
 import io.opc.rpc.core.connection.GrpcConnection;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
 import io.opc.rpc.core.grpc.auto.Payload;
+import io.opc.rpc.core.handle.BaseRequestHandler;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
@@ -42,6 +46,7 @@ import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
+import io.opc.rpc.core.util.PayloadClassHelper;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -175,6 +180,26 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
      * @param properties Properties
      */
     protected abstract void doInit(Properties properties);
+
+    @Override
+    public void registerClientRequestHandler(Class<? extends ClientRequest> requestClass,
+            RequestHandler<? extends ClientRequest, ? extends ServerResponse> requestHandler) {
+        //noinspection StatementWithEmptyBody
+        if (requestHandler instanceof BaseRequestHandler) {
+            // noop, because already be registered on construct
+        } else {
+            java.lang.reflect.ParameterizedType superGenericSuperclass =
+                    (java.lang.reflect.ParameterizedType) requestHandler.getClass().getGenericSuperclass();
+            //noinspection unchecked
+            final Class<? extends Request> requestType = (Class<? extends Request>) superGenericSuperclass.getActualTypeArguments()[0];
+            //noinspection unchecked
+            final Class<? extends Response> responseType = (Class<? extends Response>) superGenericSuperclass.getActualTypeArguments()[1];
+
+            RequestHandlerSupport.register(requestType, requestHandler);
+
+            PayloadClassHelper.register(requestType, responseType);
+        }
+    }
 
     @Override
     public void close() {

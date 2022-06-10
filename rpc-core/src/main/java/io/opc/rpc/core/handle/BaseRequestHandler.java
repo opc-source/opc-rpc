@@ -4,7 +4,6 @@ import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.core.util.PayloadClassHelper;
-import java.lang.reflect.ParameterizedType;
 
 /**
  * BaseRequestHandler.
@@ -15,9 +14,12 @@ import java.lang.reflect.ParameterizedType;
 public abstract class BaseRequestHandler<Req extends Request, Resp extends Response> implements RequestHandler<Req, Resp> {
 
     {
-        ParameterizedType superGenericSuperclass = (ParameterizedType) this.getClass().getGenericSuperclass();
-        final Class<?> requestType = (Class<?>) superGenericSuperclass.getActualTypeArguments()[0];
-        final Class<?> responseType = (Class<?>) superGenericSuperclass.getActualTypeArguments()[1];
+        java.lang.reflect.ParameterizedType superGenericSuperclass =
+                (java.lang.reflect.ParameterizedType) this.getClass().getGenericSuperclass();
+        //noinspection unchecked
+        final Class<? extends Request> requestType = (Class<? extends Request>) superGenericSuperclass.getActualTypeArguments()[0];
+        //noinspection unchecked
+        final Class<? extends Response> responseType = (Class<? extends Response>) superGenericSuperclass.getActualTypeArguments()[1];
 
         RequestHandlerSupport.register(requestType, this);
 
@@ -29,6 +31,12 @@ public abstract class BaseRequestHandler<Req extends Request, Resp extends Respo
         return doReply(request);
     }
 
+    /**
+     * handle Request and reply Response.
+     *
+     * @param req Request
+     * @return Response
+     */
     protected abstract Resp doReply(Req req);
 
 }

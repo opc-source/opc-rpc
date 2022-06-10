@@ -12,10 +12,14 @@ import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.RequestCallback;
+import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcConnectionException;
+import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.request.ServerRequest;
+import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ResponseCode;
@@ -27,7 +31,10 @@ import io.opc.rpc.core.connection.Connection;
 import io.opc.rpc.core.connection.ConnectionManager;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
 import io.opc.rpc.core.grpc.auto.Payload;
+import io.opc.rpc.core.handle.BaseRequestHandler;
+import io.opc.rpc.core.handle.ClientDetectionRequestHandler;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
+import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
@@ -36,6 +43,7 @@ import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
+import io.opc.rpc.core.util.PayloadClassHelper;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.util.HashMap;
 import java.util.Map;
@@ -134,6 +142,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 }
             }
         }, this.keepActive * 2, 1000L, TimeUnit.MILLISECONDS);
+
+        // register ClientDetectionRequestHandler for ClientDetectionServerRequest, tobe a good practice of RequestHandler
+        this.registerServerRequestHandler(ClientDetectionServerRequest.class, new ClientDetectionRequestHandler());
 
         // subclass init
         this.doInit(properties);
@@ -336,7 +347,32 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     protected abstract void doInit(Properties properties);
 
     @Override
-    public void asyncRequest(@Nonnull Request request, @Nullable RequestCallback<? extends Response> requestCallback) {
+    public void registerServerRequestHandler(Class<? extends ServerRequest> requestClass,
+            RequestHandler<? extends ServerRequest, ? extends ClientResponse> requestHandler) {
+
+        //noinspection StatementWithEmptyBody
+        if (requestHandler instanceof BaseRequestHandler) {
+            // noop, because already be registered on construct
+        } else {
+            java.lang.reflect.ParameterizedType superGenericSuperclass =
+                    (java.lang.reflect.ParameterizedType) requestHandler.getClass().getGenericSuperclass();
+            //noinspection unchecked
+            final Class<? extends Request> requestType = (Class<? extends Request>) superGenericSuperclass.getActualTypeArguments()[0];
+            //noinspection unchecked
+            final Class<? extends Response> responseType = (Class<? extends Response>) superGenericSuperclass.getActualTypeArguments()[1];
+
+            RequestHandlerSupport.register(requestType, requestHandler);
+
+            PayloadClassHelper.register(requestType, responseType);
+        }
+    }
+
+    @Override
+    public void asyncRequest(@Nonnull ClientRequest request, @Nullable RequestCallback<? extends ServerResponse> requestCallback)
+            throws OpcConnectionException {
+        if (this.currentConnection == null) {
+            throw new OpcConnectionException(ExceptionCode.CONNECTION_ERROR);
+        }
         this.currentConnection.asyncRequest(request, requestCallback);
     }
 

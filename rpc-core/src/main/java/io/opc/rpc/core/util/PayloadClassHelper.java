@@ -1,14 +1,17 @@
 package io.opc.rpc.core.util;
 
-import io.opc.rpc.core.handle.ClientDetectionRequestHandler;
+import io.opc.rpc.api.request.Request;
+import io.opc.rpc.api.response.ErrorResponse;
+import io.opc.rpc.api.response.Response;
+import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
+import io.opc.rpc.core.response.ClientDetectionClientResponse;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
-import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,13 +54,11 @@ public class PayloadClassHelper {
         register(ConnectionSetupClientRequest.class, ConnectionSetupServerResponse.class);
         register(ServerDetectionClientRequest.class, ServerDetectionServerResponse.class);
         register(ConnectionResetServerRequest.class, ConnectionResetClientResponse.class);
+        register(ClientDetectionServerRequest.class, ClientDetectionClientResponse.class);
         register(ErrorResponse.class);
-
-        // TODO how to init?
-        new ClientDetectionRequestHandler();
     }
 
-    public void register(Class<?> requestClass, Class<?> responseClass) {
+    public void register(Class<? extends Request> requestClass, Class<? extends Response> responseClass) {
 
         REQUEST_WITH_RESPONSE_CLASS_MAP.put(requestClass.getName(), responseClass);
         RESPONSE_WITH_REQUEST_CLASS_MAP.put(responseClass.getName(), requestClass);
