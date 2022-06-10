@@ -21,5 +21,8 @@ Good practice of gRPC
                                                  +------------+ 
 ```
 
+## 开发说明
+- 若遇到 `io.opc.rpc.core.grpc.auto.*` 类不存在的问题，请先执行 `mvn compile` 生成 grpc 相关类
+
 # License
 [Apache License Version 2.0](LICENSE)
