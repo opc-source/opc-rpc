@@ -1,5 +1,6 @@
 package io.opc.rpc.api;
 
+import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.response.Response;
 import java.util.Properties;
@@ -19,7 +20,7 @@ public interface OpcRpcClient extends AutoCloseable {
      *
      * @param properties {@link Properties}
      */
-    void init(Properties properties);
+    void init(Properties properties) throws OpcRpcRuntimeException;
 
     /**
      * async send Request. async listening a Response with RequestCallback.

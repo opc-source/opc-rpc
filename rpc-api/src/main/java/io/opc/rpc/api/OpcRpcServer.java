@@ -1,5 +1,6 @@
 package io.opc.rpc.api;
 
+import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import java.util.Properties;
 
 /**
@@ -15,6 +16,6 @@ public interface OpcRpcServer extends AutoCloseable{
      *
      * @param properties {@link Properties}
      */
-    void init(Properties properties);
+    void init(Properties properties) throws OpcRpcRuntimeException;
 
 }

@@ -1,6 +1,8 @@
 package io.opc.rpc.api;
 
 import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.exception.ExceptionCode;
+import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import java.util.Objects;
 import java.util.Properties;
 import lombok.experimental.UtilityClass;
@@ -22,7 +24,7 @@ public class OpcRpcFactory {
      * @param serverAddress host:port or ip:port, eg: localhost:12345,domain:12344,127.0.0.1:12343
      * @return {@link OpcRpcClient}
      */
-    public OpcRpcClient createOpcClient(String serverAddress) {
+    public OpcRpcClient createOpcClient(String serverAddress) throws OpcRpcRuntimeException {
         Objects.requireNonNull(serverAddress, "serverAddress is null");
 
         Properties properties = new Properties();
@@ -36,7 +38,7 @@ public class OpcRpcFactory {
      * @param properties {@link Properties}
      * @return {@link OpcRpcClient}
      */
-    public OpcRpcClient createOpcClient(Properties properties) {
+    public OpcRpcClient createOpcClient(Properties properties) throws OpcRpcRuntimeException {
         Objects.requireNonNull(properties, "properties is null");
 
         try {
@@ -45,8 +47,10 @@ public class OpcRpcFactory {
 
             opcRpcClient.init(properties);
             return opcRpcClient;
+        } catch (OpcRpcRuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new OpcRpcRuntimeException(ExceptionCode.INIT_CLIENT_FAIL, e);
         }
     }
 
@@ -56,7 +60,7 @@ public class OpcRpcFactory {
      * @param properties {@link Properties}
      * @return {@link OpcRpcServer}
      */
-    public OpcRpcServer createOpcServer(Properties properties) {
+    public OpcRpcServer createOpcServer(Properties properties) throws OpcRpcRuntimeException {
         Objects.requireNonNull(properties, "properties is null");
 
         try {
@@ -65,8 +69,10 @@ public class OpcRpcFactory {
 
             opcRpcServer.init(properties);
             return opcRpcServer;
+        } catch (OpcRpcRuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new OpcRpcRuntimeException(ExceptionCode.INIT_SERVER_FAIL, e);
         }
     }
 

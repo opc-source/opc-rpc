@@ -19,6 +19,8 @@ import io.grpc.stub.StreamObserver;
 import io.grpc.util.MutableHandlerRegistry;
 import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.exception.ExceptionCode;
+import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.ErrorResponse;
@@ -131,7 +133,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         try {
             this.server.start();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new OpcRpcRuntimeException(ExceptionCode.INIT_SERVER_FAIL, e);
         }
 
         this.scheduledExecutor = new ScheduledThreadPoolExecutor(1,

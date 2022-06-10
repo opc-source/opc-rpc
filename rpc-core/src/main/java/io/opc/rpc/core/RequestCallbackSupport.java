@@ -2,6 +2,8 @@ package io.opc.rpc.core;
 
 import io.grpc.netty.shaded.io.netty.util.HashedWheelTimer;
 import io.opc.rpc.api.RequestCallback;
+import io.opc.rpc.api.exception.ExceptionCode;
+import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import io.opc.rpc.api.response.Response;
 import java.util.HashMap;
 import java.util.Map;
@@ -81,7 +83,7 @@ public class RequestCallbackSupport {
                 return;
             }
         }
-        throw new RuntimeException("Conflict requestId:" + requestId);
+        throw new OpcRpcRuntimeException(ExceptionCode.REQUEST_ID_CONFLICT.getCode(), "Conflict requestId:" + requestId);
     }
 
     /**
