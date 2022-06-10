@@ -9,7 +9,6 @@ import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.response.ErrorResponse;
-import io.opc.rpc.api.response.ServerResponse;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -32,7 +31,7 @@ public class TestClient {
     public static void main(String[] args) throws Exception {
 
         final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.WARN);
+        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
 
         final Properties properties = new Properties();
         properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_NAME, "localTest");
@@ -65,7 +64,7 @@ public class TestClient {
             while (!STOP.get()) {
                 final ClientTestClientRequest testClientRequest = new ClientTestClientRequest();
                 try {
-                    rpcClient.asyncRequest(testClientRequest, new RequestCallback<ServerResponse>() {
+                    rpcClient.asyncRequest(testClientRequest, new RequestCallback<ClientTestServerResponse>() {
                         @Override
                         public Executor getExecutor() {
                             return ForkJoinPool.commonPool();
@@ -82,7 +81,7 @@ public class TestClient {
                         }
 
                         @Override
-                        public void onResponse(ServerResponse response) {
+                        public void onResponse(ClientTestServerResponse response) {
                             log.info("response : {}", response);
                         }
 
