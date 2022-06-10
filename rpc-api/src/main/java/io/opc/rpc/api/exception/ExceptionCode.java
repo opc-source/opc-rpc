@@ -37,6 +37,13 @@ public enum ExceptionCode {
      */
     REQUEST_ID_CONFLICT(6700, "RequestId Conflict."),
 
+    /// ---------------------------------------------------------  ///
+
+    /**
+     * Connection Error.
+     */
+    CONNECTION_ERROR(6800, "Connection Error."),
+
     ;
 
     private final int code;

@@ -1,8 +1,11 @@
 package io.opc.rpc.core.connection;
 
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.RequestCallback;
+import io.opc.rpc.api.exception.ExceptionCode;
+import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.grpc.auto.Payload;
@@ -33,31 +36,40 @@ public class GrpcConnection extends BaseConnection implements Connection {
     /**
      * @param payload io.opc.rpc.api.Payload
      */
-    protected void payloadNoAck(io.opc.rpc.api.Payload payload) {
+    protected void payloadNoAck(io.opc.rpc.api.Payload payload) throws OpcConnectionException {
         final Payload grpcPayload = PayloadObjectHelper.buildGrpcPayload(payload);
         // StreamObserver#onNext() is not thread-safe, synchronized is required to avoid direct memory leak.
         synchronized (biStreamObserver) {
-            // maybe connection already closed with throw StatusRuntimeException
-            biStreamObserver.onNext(grpcPayload);
+            // maybe connection already closed with throw StatusRuntimeException or state not right with throw  IllegalStateException
+            try {
+                biStreamObserver.onNext(grpcPayload);
+            } catch (StatusRuntimeException | IllegalStateException statusEx) {
+                throw new OpcConnectionException(ExceptionCode.CONNECTION_ERROR, statusEx);
+            }
         }
     }
 
     @Override
-    public void asyncResponse(@Nonnull Response response) {
+    public void asyncResponse(@Nonnull Response response) throws OpcConnectionException {
         this.payloadNoAck(response);
     }
 
     @Override
     public void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request,
-            @Nullable RequestCallback<? extends Response> requestCallback) {
+            @Nullable RequestCallback<? extends Response> requestCallback) throws OpcConnectionException {
 
         // First async listening a Response with requestCallback(if not null).
         if (requestCallback != null) {
             RequestCallbackSupport.addCallback(this.getConnectionId(), request.getRequestId(), requestCallback);
         }
 
-        // Finally do payloadNoAck.
-        this.payloadNoAck(request);
+        try {
+            // Finally do payloadNoAck.
+            this.payloadNoAck(request);
+        } catch (Exception ex) {
+            // Clear callback if exception
+            RequestCallbackSupport.clearCallback(this.getConnectionId(), request.getRequestId());
+        }
     }
 
     @Override
