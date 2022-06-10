@@ -50,6 +50,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,8 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
+
     protected long keepActive = OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE;
 
     protected ThreadPoolExecutor executor;
@@ -73,6 +76,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     @Override
     public void init(Properties properties) {
+        if (!initialized.compareAndSet(false, true)) {
+            return;
+        }
 
         this.keepActive = (Long) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_KEEP_ACTIVE,
                 OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE);
@@ -281,7 +287,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     } catch (Throwable throwable) {
                         log.error("[{}]Grpc request bi stream,payload deserialize error", connectionId, throwable);
                         ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), throwable.getMessage());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
+                        this.doResponseWithConnectionFirst(errorResponse);
                         return;
                     }
 
@@ -301,7 +307,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
                         ConnectionSetupServerResponse setupResponse = new ConnectionSetupServerResponse();
                         setupResponse.setRequestId(setupRequest.getRequestId());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(setupResponse));
+                        this.doResponseWithConnectionFirst(setupResponse);
                     }
                     // ServerDetectionClientRequest
                     else if (payloadObj instanceof ServerDetectionClientRequest) {
@@ -310,7 +316,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
                         ServerDetectionServerResponse detectionResponse = new ServerDetectionServerResponse();
                         detectionResponse.setRequestId(detectionRequest.getRequestId());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(detectionResponse));
+                        this.doResponseWithConnectionFirst(detectionResponse);
                     }
                     // ClientRequest
                     else if (payloadObj instanceof ClientRequest) {
@@ -321,7 +327,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                             response = ErrorResponse.build(ResponseCode.HANDLE_REQUEST_NULL);
                         }
                         response.setRequestId(clientRequest.getRequestId());
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
+                        this.doResponseWithConnectionFirst(response);
                     }
                     // ClientResponse
                     else if (payloadObj instanceof ClientResponse) {
@@ -337,7 +343,19 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     else {
                         log.warn("[{}]Grpc request bi stream,receive unsupported payload,payloadObj={}", connectionId, payloadObj);
                         ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.UNSUPPORTED_PAYLOAD);
-                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
+                        this.doResponseWithConnectionFirst(errorResponse);
+                    }
+                }
+
+                /**
+                 * must have a lock around the streamObserver.onNext(), so use GrpcConnection synchronized do it
+                 */
+                private void doResponseWithConnectionFirst(Response response) {
+                    final Connection connection = ConnectionManager.getConnection(connectionId);
+                    if (connection != null) {
+                        connection.asyncResponse(response);
+                    } else {
+                        responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
                     }
                 }
 
