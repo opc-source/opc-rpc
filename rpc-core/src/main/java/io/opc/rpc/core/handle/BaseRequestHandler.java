@@ -19,8 +19,7 @@ public abstract class BaseRequestHandler<Req extends Request, Resp extends Respo
         final Class<?> requestType = (Class<?>) superGenericSuperclass.getActualTypeArguments()[0];
         final Class<?> responseType = (Class<?>) superGenericSuperclass.getActualTypeArguments()[1];
 
-        //noinspection unchecked
-        RequestHandlerSupport.register(requestType.getName(), (RequestHandler<Request, Response>) this);
+        RequestHandlerSupport.register(requestType, this);
 
         PayloadClassHelper.register(requestType, responseType);
     }

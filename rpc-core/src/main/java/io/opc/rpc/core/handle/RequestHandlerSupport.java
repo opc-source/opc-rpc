@@ -14,19 +14,20 @@ import lombok.experimental.UtilityClass;
  * @version Id : RequestHandlerSupport.java, v 0.1 2022年06月05日 17:19 caihongwen Exp $
  */
 @UtilityClass
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class RequestHandlerSupport {
 
     /**
      * Request.className -> RequestHandler
      */
-    private static final Map<String, RequestHandler<Request, Response>> REQUEST_HANDLER_MAP = new ConcurrentHashMap<>();
+    private static final Map<String, RequestHandler> REQUEST_HANDLER_MAP = new ConcurrentHashMap<>();
 
-    public static void register(String requestClassName, RequestHandler<Request, Response> requestHandler) {
-        REQUEST_HANDLER_MAP.put(requestClassName, requestHandler);
+    public static void register(Class<?> requestClass, RequestHandler requestHandler) {
+        REQUEST_HANDLER_MAP.put(requestClass.getName(), requestHandler);
     }
 
     public static Response handleRequest(Request request) {
-        final RequestHandler<Request, Response> requestHandler = REQUEST_HANDLER_MAP.get(request.getClass().getName());
+        final RequestHandler requestHandler = REQUEST_HANDLER_MAP.get(request.getClass().getName());
         if (requestHandler == null) {
             return null;
         }

@@ -9,6 +9,7 @@ import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
+import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -57,7 +58,7 @@ public class TestClient {
 
         PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
         PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
-        new ServerTestRequestHandler();
+        RequestHandlerSupport.register(ServerTestServerRequest.class, new ServerTestRequestHandler());
 
         new Thread(() -> {
             while (!STOP.get()) {
