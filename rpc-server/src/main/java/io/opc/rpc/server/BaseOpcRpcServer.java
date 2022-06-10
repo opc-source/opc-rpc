@@ -13,7 +13,6 @@ import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.ServerTransportFilter;
-import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.grpc.util.MutableHandlerRegistry;
@@ -27,6 +26,7 @@ import io.opc.rpc.api.response.ClientResponse;
 import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ResponseCode;
+import io.opc.rpc.core.Endpoint;
 import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.connection.BaseConnection;
 import io.opc.rpc.core.connection.Connection;
@@ -301,6 +301,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
                         BaseConnection connection = GrpcConnection.builder().biStreamObserver(responseObserver).build();
                         connection.setConnectionId(connectionId);
+                        connection.setEndpoint(new Endpoint(remoteIp, remotePort));
                         connection.setClientName(clientName);
                         connection.setLabels(labels);
                         ConnectionManager.holdAndCloseOld(connection);
