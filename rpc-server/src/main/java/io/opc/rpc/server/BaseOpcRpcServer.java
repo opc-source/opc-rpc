@@ -250,7 +250,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
     /**
      * Wrap attributes and deal connection ...
      */
-    protected class WrapAttributeAndConnectionServerTransportFilter extends ServerTransportFilter {
+    public class WrapAttributeAndConnectionServerTransportFilter extends ServerTransportFilter {
         @Override
         public Attributes transportReady(Attributes transportAttrs) {
             InetSocketAddress remoteAddress = (InetSocketAddress) transportAttrs.get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR);
@@ -287,7 +287,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
     /**
      * server interceptor to set connectionId ...
      */
-    static class AttributeToContextServerInterceptor implements ServerInterceptor {
+    public static class AttributeToContextServerInterceptor implements ServerInterceptor {
         @Override
         public <T, S> ServerCall.Listener<T> interceptCall(ServerCall<T, S> call, Metadata headers,
                 ServerCallHandler<T, S> next) {
@@ -301,7 +301,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         }
     }
 
-    class OpcGrpcServiceImpl extends OpcGrpcServiceGrpc.OpcGrpcServiceImplBase {
+    public class OpcGrpcServiceImpl extends OpcGrpcServiceGrpc.OpcGrpcServiceImplBase {
 
         @Override
         public void request(io.opc.rpc.core.grpc.auto.Payload requestPayload,
