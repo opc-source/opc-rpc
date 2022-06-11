@@ -280,9 +280,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             final io.opc.rpc.api.Payload payloadObj;
             try {
                 payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
-            } catch (Throwable throwable) {
-                log.error("[{}]Grpc request,payload deserialize error", connectionId, throwable);
-                ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), throwable.getMessage());
+            } catch (Exception e) {
+                log.error("[{}]Grpc request,payload deserialize error", connectionId, e);
+                ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), e.getMessage());
                 responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
                 responseObserver.onCompleted();
                 return;
@@ -341,9 +341,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                     final io.opc.rpc.api.Payload payloadObj;
                     try {
                         payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
-                    } catch (Throwable throwable) {
-                        log.error("[{}]Grpc request bi stream,payload deserialize error", connectionId, throwable);
-                        ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), throwable.getMessage());
+                    } catch (Exception e) {
+                        log.error("[{}]Grpc request bi stream,payload deserialize error", connectionId, e);
+                        ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), e.getMessage());
                         this.doResponseWithConnectionFirst(errorResponse);
                         return;
                     }
