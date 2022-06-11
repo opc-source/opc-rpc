@@ -116,20 +116,30 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         this.endpoints = Endpoint.resolveServerAddress(serverAddress);
 
         this.executor = createClientExecutor(serverAddress);
-        this.scheduledExecutor = new ScheduledThreadPoolExecutor(1, r -> {
+        this.scheduledExecutor = new ScheduledThreadPoolExecutor(2, r -> {
             Thread t = new Thread(r);
             t.setName("io.opc.rpc.core.OpcRpcClientScheduler");
             t.setDaemon(true);
             return t;
         });
-        this.scheduledExecutor.scheduleWithFixedDelay(() -> {
-            final Endpoint poll = this.reconnectionSignal.poll();
-            if (poll != null) {
-                this.reconnect(poll);
+        this.scheduledExecutor.execute(() -> {
+            while (!OpcRpcStatus.SHUTDOWN.equals(this.rpcClientStatus.get())) {
+                try {
+                    final Endpoint poll = this.reconnectionSignal.poll(this.keepActive, TimeUnit.MICROSECONDS);
+                    if (poll != null) {
+                        this.reconnect(poll);
+                    }
+                } catch (Exception ignore) {
+                    // ignore
+                    Thread.currentThread().interrupt();
+                }
             }
-        }, 1000L, 1000L, TimeUnit.MILLISECONDS);
+        });
         // keepActive in client
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
+            if (OpcRpcStatus.SHUTDOWN.equals(this.rpcClientStatus.get())) {
+                return;
+            }
             // last active timeout will do check with ServerDetectionClientRequest
             if (this.currentConnection != null && ConnectionManager.isActiveTimeout(this.currentConnection, this.keepActive)) {
                 try {
@@ -162,11 +172,11 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         }
     }
 
-    protected void syncSwitchServer(@Nullable Endpoint target) {
+    protected void asyncSwitchServer(@Nullable Endpoint target) {
         if (target != null) {
-            this.reconnect(target);
+            this.reconnectionSignal.offer(target);
         } else {
-            this.reconnect(Endpoint.randomOneExclude(this.endpoints, this.currentConnection.getEndpoint()));
+            this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
         }
     }
 
@@ -250,7 +260,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                             grpcConnection.getConnectionId(), payloadObj);
                     final ConnectionResetServerRequest connectionResetRequest = (ConnectionResetServerRequest) payloadObj;
 
-                    BaseOpcRpcClient.this.syncSwitchServer(connectionResetRequest.getEndpoint());
+                    BaseOpcRpcClient.this.asyncSwitchServer(connectionResetRequest.getEndpoint());
 
                     final ConnectionResetClientResponse connectionResetResponse = new ConnectionResetClientResponse();
                     connectionResetResponse.setRequestId(connectionResetRequest.getRequestId());

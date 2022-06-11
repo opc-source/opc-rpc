@@ -118,6 +118,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 r -> new Thread(r, "io.opc.rpc.core.OpcRpcServerScheduler"));
         // keepActive in server
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
+            if (OpcRpcStatus.SHUTDOWN.equals(this.rpcServerStatus.get())) {
+                return;
+            }
             this.notifyActiveTimeoutConnectionClientDetection();
         }, 1000L, 1000L, TimeUnit.MILLISECONDS);
     }
@@ -405,7 +408,6 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                             errorResponse.setRequestId(((ClientRequest) payloadObj).getRequestId());
                         }
                         this.doResponseWithConnectionFirst(errorResponse);
-                        BaseOpcRpcServer.this.notifyAllConnectionResetServer();
                         return;
                     }
 

@@ -31,7 +31,7 @@ public class RequestCallbackSupport {
 
     private static final HashedWheelTimer HASHED_WHEEL_TIMER = new HashedWheelTimer(r -> {
         Thread t = new Thread(r);
-        t.setName("io.opc.rpc.core.RequestCallbackContainerTimer");
+        t.setName("io.opc.rpc.core.RequestCallbackSupportTimer");
         t.setDaemon(true);
         return t;
     }, 1, TimeUnit.MILLISECONDS, 128);
@@ -66,24 +66,22 @@ public class RequestCallbackSupport {
 
         Map<String, RequestCallback<?>> requestCallbackMap = initContextIfNecessary(connectionId);
 
-        if (!requestCallbackMap.containsKey(requestId)) {
-            RequestCallback<?> requestCallbackOld = requestCallbackMap.putIfAbsent(requestId, requestCallback);
-            if (requestCallbackOld == null) {
-                // register timeout task
-                HASHED_WHEEL_TIMER.newTimeout(timeout -> {
-                    // Skip after (being canceled) or (be notifyCallback and removed).
-                    RequestCallback<?> requestCallbackOnTimeout = null;
-                    if (timeout.isCancelled() || (requestCallbackOnTimeout = clearCallback(connectionId, requestId)) == null) {
-                        return;
-                    }
+        RequestCallback<?> requestCallbackOld = requestCallbackMap.putIfAbsent(requestId, requestCallback);
+        if (requestCallbackOld != null) {
+            throw new OpcRpcRuntimeException(ExceptionCode.REQUEST_ID_CONFLICT.getCode(), "Conflict requestId:" + requestId);
+        }
 
-                    requestCallbackOnTimeout.getExecutor().execute(requestCallbackOnTimeout::onTimeout);
-
-                }, requestCallback.getTimeout(), TimeUnit.MILLISECONDS);
+        // register timeout task
+        HASHED_WHEEL_TIMER.newTimeout(timeout -> {
+            // Skip after (being canceled) or (be notifyCallback and removed).
+            RequestCallback<?> requestCallbackOnTimeout;
+            if (timeout.isCancelled() || (requestCallbackOnTimeout = clearCallback(connectionId, requestId)) == null) {
                 return;
             }
-        }
-        throw new OpcRpcRuntimeException(ExceptionCode.REQUEST_ID_CONFLICT.getCode(), "Conflict requestId:" + requestId);
+
+            requestCallbackOnTimeout.getExecutor().execute(requestCallbackOnTimeout::onTimeout);
+
+        }, requestCallback.getTimeout(), TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -93,11 +91,11 @@ public class RequestCallbackSupport {
      */
     private static Map<String, RequestCallback<?>> initContextIfNecessary(String connectionId) {
 
-        if (!CALLBACK_CONTEXT.containsKey(connectionId)) {
-            return CALLBACK_CONTEXT.computeIfAbsent(connectionId, cid -> new HashMap<>(128));
-        } else {
-            return CALLBACK_CONTEXT.get(connectionId);
+        final Map<String, RequestCallback<?>> requestCallbackMap = CALLBACK_CONTEXT.get(connectionId);
+        if (requestCallbackMap != null) {
+            return requestCallbackMap;
         }
+        return CALLBACK_CONTEXT.computeIfAbsent(connectionId, cid -> new HashMap<>(128));
     }
 
     /**
