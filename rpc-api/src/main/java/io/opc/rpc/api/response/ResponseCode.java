@@ -33,6 +33,11 @@ public enum ResponseCode {
      */
     HANDLE_REQUEST_NULL(535, "HandleRequest get null, maybe has no relevant RequestHandler."),
 
+    /**
+     * Server unhealthy
+     */
+    SERVER_UNHEALTHY(555, "Server unhealthy."),
+
     // 534 ~ 566, the error code range, for opc-rpc inner
 
     // 567 ~ 599, the error code range, it is recommended to customize

@@ -44,6 +44,11 @@ public enum ExceptionCode {
      */
     CONNECTION_ERROR(6800, "Connection Error."),
 
+    /**
+     * Connection Unhealthy.
+     */
+    CONNECTION_UNHEALTHY(6801, "Connection Unhealthy."),
+
     ;
 
     private final int code;

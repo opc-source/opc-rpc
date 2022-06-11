@@ -13,6 +13,7 @@ import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.Connection;
 import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcClient;
+import io.opc.rpc.api.OpcRpcStatus;
 import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.constant.OpcConstants;
@@ -56,7 +57,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
@@ -72,7 +73,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    protected volatile AtomicReference<OpcRpcStatus> rpcClientStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
 
     protected long keepActive = OpcConstants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE;
 
@@ -104,7 +105,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
     @Override
     public void init(@Nonnull Properties properties) {
-        if (!initialized.compareAndSet(false, true)) {
+        if (!this.rpcClientStatus.compareAndSet(OpcRpcStatus.WAIT_INIT, OpcRpcStatus.STARTING)) {
             return;
         }
         this.keepActive = (Long) properties.getOrDefault(OpcConstants.Client.KEY_OPC_RPC_CLIENT_KEEP_ACTIVE,
@@ -155,6 +156,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         if (this.currentConnection == null) {
             log.error("connect to server failed. do asyncSwitchServerExclude {}.", endpoint.getAddress());
             this.asyncSwitchServerExclude(endpoint);
+            this.rpcClientStatus.set(OpcRpcStatus.UNHEALTHY);
+        } else {
+            this.rpcClientStatus.set(OpcRpcStatus.RUNNING);
         }
     }
 
@@ -183,6 +187,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 this.scheduledExecutor.execute(oldConn::close);
             }
             this.currentConnection = connection;
+            this.rpcClientStatus.set(OpcRpcStatus.RUNNING);
         }
     }
 
@@ -298,8 +303,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             public void onError(Throwable t) {
                 log.error("[{}] responseBiStreamObserver on error, do asyncSwitchServerExclude {}.",
                         grpcConnection.getConnectionId(), grpcConnection.getEndpoint().getAddress(), t);
-                // TODO set status=RpcClientStatus.UNHEALTHY ?
-                BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
+                if (BaseOpcRpcClient.this.rpcClientStatus.compareAndSet(OpcRpcStatus.RUNNING, OpcRpcStatus.UNHEALTHY)) {
+                    BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
+                }
             }
 
             @Override
@@ -308,7 +314,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                     log.warn("[{}] responseBiStreamObserver on completed, do asyncSwitchServerExclude {}.",
                             grpcConnection.getConnectionId(), grpcConnection.getEndpoint().getAddress());
                     // not normal onCompleted, do asyncSwitchServerExclude
-                    BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
+                    if (BaseOpcRpcClient.this.rpcClientStatus.compareAndSet(OpcRpcStatus.RUNNING, OpcRpcStatus.UNHEALTHY)) {
+                        BaseOpcRpcClient.this.asyncSwitchServerExclude(grpcConnection.getEndpoint());
+                    }
                 } else {
                     // normal onCompleted
                     log.warn("[{}] responseBiStreamObserver on completed", grpcConnection.getConnectionId());
@@ -372,12 +380,16 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             throws OpcConnectionException {
         if (this.currentConnection == null) {
             throw new OpcConnectionException(ExceptionCode.CONNECTION_ERROR);
+        } else if (!OpcRpcStatus.RUNNING.equals(this.rpcClientStatus.get())) {
+            throw new OpcConnectionException(ExceptionCode.CONNECTION_UNHEALTHY);
         }
         this.currentConnection.asyncRequest(request, requestCallback);
     }
 
     @Override
     public void close() {
+        this.rpcClientStatus.set(OpcRpcStatus.SHUTDOWN);
+
         if (this.currentConnection != null) {
             log.info("Shutdown Connection {}", this.currentConnection);
             this.currentConnection.close();

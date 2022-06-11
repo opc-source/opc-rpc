@@ -19,6 +19,7 @@ import io.grpc.util.MutableHandlerRegistry;
 import io.opc.rpc.api.Connection;
 import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcServer;
+import io.opc.rpc.api.OpcRpcStatus;
 import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.constant.OpcConstants;
 import io.opc.rpc.api.exception.ExceptionCode;
@@ -58,7 +59,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +73,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    protected volatile AtomicReference<OpcRpcStatus> rpcServerStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
 
     protected long keepActive = OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE;
 
@@ -91,7 +92,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     @Override
     public void init(Properties properties) {
-        if (!initialized.compareAndSet(false, true)) {
+        if (!this.rpcServerStatus.compareAndSet(OpcRpcStatus.WAIT_INIT, OpcRpcStatus.STARTING)) {
             return;
         }
 
@@ -108,6 +109,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
         try {
             this.server.start();
+            this.rpcServerStatus.set(OpcRpcStatus.RUNNING);
         } catch (IOException e) {
             throw new OpcRpcRuntimeException(ExceptionCode.INIT_SERVER_FAIL, e);
         }
@@ -209,6 +211,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     @Override
     public void close() {
+        this.rpcServerStatus.set(OpcRpcStatus.SHUTDOWN);
         this.notifyAllConnectionResetServer();
 
         if (this.server != null) {
@@ -322,6 +325,18 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 return;
             }
 
+            // rpcServerStatus not RUNNING
+            if (!OpcRpcStatus.RUNNING.equals(BaseOpcRpcServer.this.rpcServerStatus.get())) {
+                log.error("[{}]Grpc request,rpcServerStatus not RUNNING,payloadObj={}", connectionId, payloadObj);
+                ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.SERVER_UNHEALTHY);
+                if (payloadObj instanceof ClientRequest) {
+                    errorResponse.setRequestId(((ClientRequest) payloadObj).getRequestId());
+                }
+                responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(errorResponse));
+                responseObserver.onCompleted();
+                return;
+            }
+
             // ConnectionInitClientRequest
             if (payloadObj instanceof ConnectionInitClientRequest) {
                 log.info("[{}]Grpc request,receive an ConnectionInitClientRequest,payloadObj={}", connectionId, payloadObj);
@@ -379,6 +394,18 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         log.error("[{}]Grpc request bi stream,payload deserialize error", connectionId, e);
                         ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), e.getMessage());
                         this.doResponseWithConnectionFirst(errorResponse);
+                        return;
+                    }
+
+                    // rpcServerStatus not RUNNING
+                    if (!OpcRpcStatus.RUNNING.equals(BaseOpcRpcServer.this.rpcServerStatus.get())) {
+                        log.error("[{}]Grpc request bi stream,rpcServerStatus not RUNNING,payloadObj={}", connectionId, payloadObj);
+                        ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.SERVER_UNHEALTHY);
+                        if (payloadObj instanceof ClientRequest) {
+                            errorResponse.setRequestId(((ClientRequest) payloadObj).getRequestId());
+                        }
+                        this.doResponseWithConnectionFirst(errorResponse);
+                        BaseOpcRpcServer.this.notifyAllConnectionResetServer();
                         return;
                     }
 
