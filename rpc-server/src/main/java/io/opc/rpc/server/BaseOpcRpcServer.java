@@ -99,61 +99,12 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE);
         final Integer serverPort = (Integer) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT,
                 OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
-        this.executor = createServerExecutor(serverPort);
+        this.executor = this.createServerExecutor(serverPort);
 
-        // server interceptor to set connection id.
-        final ServerInterceptor serverInterceptor = new ServerInterceptor() {
-            @Override
-            public <T, S> ServerCall.Listener<T> interceptCall(ServerCall<T, S> call, Metadata headers,
-                    ServerCallHandler<T, S> next) {
-                // custom attributes from ServerTransportFilter
-                Context ctx = Context.current()
-                        .withValue(CONTEXT_KEY_CONN_ID, call.getAttributes().get(TRANS_KEY_CONN_ID))
-                        .withValue(CONTEXT_KEY_CONN_REMOTE_IP, call.getAttributes().get(TRANS_KEY_REMOTE_IP))
-                        .withValue(CONTEXT_KEY_CONN_REMOTE_PORT, call.getAttributes().get(TRANS_KEY_REMOTE_PORT))
-                        .withValue(CONTEXT_KEY_CONN_LOCAL_PORT, call.getAttributes().get(TRANS_KEY_LOCAL_PORT));
-                return Contexts.interceptCall(ctx, call, headers, next);
-            }
-        };
-        final MutableHandlerRegistry handlerRegistry = new MutableHandlerRegistry();
-        handlerRegistry.addService(ServerInterceptors.intercept(new OpcGrpcServiceImpl(), serverInterceptor));
+        // subclass init
+        this.doInit(properties);
 
-        this.server = ServerBuilder.forPort(serverPort).executor(this.executor)
-                .fallbackHandlerRegistry(handlerRegistry)
-                .addTransportFilter(new ServerTransportFilter() {
-                    @Override
-                    public Attributes transportReady(Attributes transportAttrs) {
-                        InetSocketAddress remoteAddress = (InetSocketAddress) transportAttrs.get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR);
-                        InetSocketAddress localAddress = (InetSocketAddress) transportAttrs.get(Grpc.TRANSPORT_ATTR_LOCAL_ADDR);
-                        String remoteIp = remoteAddress.getAddress().getHostAddress();
-                        int remotePort = remoteAddress.getPort();
-                        String localIp = localAddress.getAddress().getHostAddress();
-                        int localPort = localAddress.getPort();
-
-                        // eg: 1654890127537_127.0.0.1:59146_127.0.0.1:6666
-                        final String connectionId = System.currentTimeMillis() + "_" + remoteIp + ":" + remotePort
-                                + "_" + localIp + ":" + localPort;
-                        Attributes attrWrapper = transportAttrs.toBuilder()
-                                .set(TRANS_KEY_CONN_ID, connectionId)
-                                .set(TRANS_KEY_REMOTE_IP, remoteIp)
-                                .set(TRANS_KEY_REMOTE_PORT, remotePort)
-                                .set(TRANS_KEY_LOCAL_PORT, localPort).build();
-
-                        log.info("Connection transportReady,connectionId={}", connectionId);
-                        return attrWrapper;
-                    }
-
-                    @Override
-                    public void transportTerminated(Attributes transportAttrs) {
-                        try {
-                            String connectionId = transportAttrs.get(TRANS_KEY_CONN_ID);
-                            log.info("Connection transportTerminated,connectionId={}", connectionId);
-                            BaseOpcRpcServer.this.connectionManager.removeAndClose(connectionId);
-                        } catch (Exception e) {
-                            // Ignore
-                        }
-                    }
-                }).build();
+        this.server = this.getServer(serverPort);
 
         try {
             this.server.start();
@@ -165,22 +116,8 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 r -> new Thread(r, "io.opc.rpc.core.OpcRpcServerScheduler"));
         // keepActive in server
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
-            // last active timeout will do check with ClientDetectionServerRequest
-            for (Connection connection : BaseOpcRpcServer.this.connectionManager.getActiveTimeoutConnections(this.keepActive)) {
-                try {
-                    connection.asyncRequest(new ClientDetectionServerRequest());
-                } catch (OpcConnectionException connEx) {
-                    log.warn("[{}]Grpc requestBi ClientDetectionServerRequest connEx", connection.getConnectionId(), connEx);
-                    BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
-                } catch (Exception unknownEx) {
-                    log.error("[{}]Grpc requestBi ClientDetectionServerRequest error", connection.getConnectionId(), unknownEx);
-                    BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
-                }
-            }
+            this.notifyActiveTimeoutConnectionClientDetection();
         }, 1000L, 1000L, TimeUnit.MILLISECONDS);
-
-        // subclass init
-        this.doInit(properties);
     }
 
     /**
@@ -189,6 +126,49 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
      * @param properties Properties
      */
     protected abstract void doInit(Properties properties);
+
+    /**
+     * Inheritance and then customize grpc Server? It's all up to you.
+     */
+    protected Server getServer(int serverPort) {
+        return ServerBuilder.forPort(serverPort).executor(this.executor)
+                .fallbackHandlerRegistry(this.getFallbackHandlerRegistry())
+                .addTransportFilter(this.getServerTransportFilter())
+                .build();
+    }
+
+    /**
+     * Inheritance and then customize addService? It's all up to you. You also can hold MutableHandlerRegistry for dynamic add Service.
+     */
+    protected MutableHandlerRegistry getFallbackHandlerRegistry() {
+        final MutableHandlerRegistry handlerRegistry = new MutableHandlerRegistry();
+        handlerRegistry.addService(ServerInterceptors.intercept(new OpcGrpcServiceImpl(), new AttributeToContextServerInterceptor()));
+        return handlerRegistry;
+    }
+
+    /**
+     * Inheritance and then customize ServerTransportFilter? It's all up to you.
+     */
+    protected ServerTransportFilter getServerTransportFilter() {
+        return new WrapAttributeAndConnectionServerTransportFilter();
+    }
+
+    /**
+     * last active timeout will do check with ClientDetectionServerRequest.
+     */
+    private void notifyActiveTimeoutConnectionClientDetection() {
+        for (Connection connection : BaseOpcRpcServer.this.connectionManager.getActiveTimeoutConnections(this.keepActive)) {
+            try {
+                connection.asyncRequest(new ClientDetectionServerRequest());
+            } catch (OpcConnectionException connEx) {
+                log.warn("[{}]Grpc requestBi ClientDetectionServerRequest connEx", connection.getConnectionId(), connEx);
+                BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
+            } catch (Exception unknownEx) {
+                log.error("[{}]Grpc requestBi ClientDetectionServerRequest error", connection.getConnectionId(), unknownEx);
+                BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
+            }
+        }
+    }
 
     /**
      * notify all connections do ResetServer.
@@ -267,6 +247,60 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         .setDaemon(true)
                         .setNameFormat("opc-rpc-server-executor-" + port + "-%d")
                         .build());
+    }
+
+    /**
+     * Wrap attributes and deal connection ...
+     */
+    protected class WrapAttributeAndConnectionServerTransportFilter extends ServerTransportFilter {
+        @Override
+        public Attributes transportReady(Attributes transportAttrs) {
+            InetSocketAddress remoteAddress = (InetSocketAddress) transportAttrs.get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR);
+            InetSocketAddress localAddress = (InetSocketAddress) transportAttrs.get(Grpc.TRANSPORT_ATTR_LOCAL_ADDR);
+            String remoteIp = remoteAddress.getAddress().getHostAddress();
+            int remotePort = remoteAddress.getPort();
+            String localIp = localAddress.getAddress().getHostAddress();
+            int localPort = localAddress.getPort();
+
+            // eg: 1654890127537_127.0.0.1:59146_127.0.0.1:6666
+            final String connectionId = System.currentTimeMillis() + "_" + remoteIp + ":" + remotePort + "_" + localIp + ":" + localPort;
+            Attributes attrWrapper = transportAttrs.toBuilder()
+                    .set(TRANS_KEY_CONN_ID, connectionId)
+                    .set(TRANS_KEY_REMOTE_IP, remoteIp)
+                    .set(TRANS_KEY_REMOTE_PORT, remotePort)
+                    .set(TRANS_KEY_LOCAL_PORT, localPort).build();
+
+            log.info("Connection transportReady,connectionId={}", connectionId);
+            return attrWrapper;
+        }
+
+        @Override
+        public void transportTerminated(Attributes transportAttrs) {
+            try {
+                String connectionId = transportAttrs.get(TRANS_KEY_CONN_ID);
+                log.info("Connection transportTerminated,connectionId={}", connectionId);
+                BaseOpcRpcServer.this.connectionManager.removeAndClose(connectionId);
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+    }
+
+    /**
+     * server interceptor to set connectionId ...
+     */
+    static class AttributeToContextServerInterceptor implements ServerInterceptor {
+        @Override
+        public <T, S> ServerCall.Listener<T> interceptCall(ServerCall<T, S> call, Metadata headers,
+                ServerCallHandler<T, S> next) {
+            // custom attributes from ServerTransportFilter
+            Context ctx = Context.current()
+                    .withValue(CONTEXT_KEY_CONN_ID, call.getAttributes().get(TRANS_KEY_CONN_ID))
+                    .withValue(CONTEXT_KEY_CONN_REMOTE_IP, call.getAttributes().get(TRANS_KEY_REMOTE_IP))
+                    .withValue(CONTEXT_KEY_CONN_REMOTE_PORT, call.getAttributes().get(TRANS_KEY_REMOTE_PORT))
+                    .withValue(CONTEXT_KEY_CONN_LOCAL_PORT, call.getAttributes().get(TRANS_KEY_LOCAL_PORT));
+            return Contexts.interceptCall(ctx, call, headers, next);
+        }
     }
 
     class OpcGrpcServiceImpl extends OpcGrpcServiceGrpc.OpcGrpcServiceImplBase {
