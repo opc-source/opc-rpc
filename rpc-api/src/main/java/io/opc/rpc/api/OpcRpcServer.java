@@ -3,6 +3,7 @@ package io.opc.rpc.api;
 import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import io.opc.rpc.api.request.ClientRequest;
 import io.opc.rpc.api.response.ServerResponse;
+import java.util.Collection;
 import java.util.Properties;
 
 /**
@@ -20,6 +21,13 @@ public interface OpcRpcServer extends AutoCloseable {
      * @throws OpcRpcRuntimeException OpcRpcRuntimeException
      */
     void init(Properties properties) throws OpcRpcRuntimeException;
+
+    /**
+     * get all Server's Connections.
+     *
+     * @return Connections
+     */
+    Collection<Connection> getConnections();
 
     /**
      * register a ClientRequestHandler who handle ClientRequest.

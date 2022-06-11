@@ -16,6 +16,8 @@ import io.grpc.ServerTransportFilter;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.grpc.util.MutableHandlerRegistry;
+import io.opc.rpc.api.Connection;
+import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.constant.OpcConstants;
@@ -29,10 +31,8 @@ import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ResponseCode;
 import io.opc.rpc.api.response.ServerResponse;
-import io.opc.rpc.core.Endpoint;
 import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.connection.BaseConnection;
-import io.opc.rpc.core.connection.Connection;
 import io.opc.rpc.core.connection.ConnectionManager;
 import io.opc.rpc.core.connection.GrpcConnection;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
@@ -41,6 +41,7 @@ import io.opc.rpc.core.handle.BaseRequestHandler;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
+import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
@@ -50,6 +51,7 @@ import io.opc.rpc.core.util.PayloadClassHelper;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -79,6 +81,13 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
     protected ScheduledThreadPoolExecutor scheduledExecutor;
 
     protected Server server;
+
+    protected final ConnectionManager connectionManager = new ConnectionManager();
+
+    @Override
+    public Collection<Connection> getConnections() {
+        return connectionManager.getConnections();
+    }
 
     @Override
     public void init(Properties properties) {
@@ -139,7 +148,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         try {
                             String connectionId = transportAttrs.get(TRANS_KEY_CONN_ID);
                             log.info("Connection transportTerminated,connectionId={}", connectionId);
-                            ConnectionManager.removeAndClose(connectionId);
+                            BaseOpcRpcServer.this.connectionManager.removeAndClose(connectionId);
                         } catch (Exception e) {
                             // Ignore
                         }
@@ -157,15 +166,15 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         // keepActive in server
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             // last active timeout will do check with ClientDetectionServerRequest
-            for (Connection connection : ConnectionManager.getActiveTimeoutConnections(this.keepActive)) {
+            for (Connection connection : BaseOpcRpcServer.this.connectionManager.getActiveTimeoutConnections(this.keepActive)) {
                 try {
                     connection.asyncRequest(new ClientDetectionServerRequest());
                 } catch (OpcConnectionException connEx) {
                     log.warn("[{}]Grpc requestBi ClientDetectionServerRequest connEx", connection.getConnectionId(), connEx);
-                    ConnectionManager.removeAndClose(connection.getConnectionId());
+                    BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
                 } catch (Exception unknownEx) {
                     log.error("[{}]Grpc requestBi ClientDetectionServerRequest error", connection.getConnectionId(), unknownEx);
-                    ConnectionManager.removeAndClose(connection.getConnectionId());
+                    BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
                 }
             }
         }, 1000L, 1000L, TimeUnit.MILLISECONDS);
@@ -180,6 +189,23 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
      * @param properties Properties
      */
     protected abstract void doInit(Properties properties);
+
+    /**
+     * notify all connections do ResetServer.
+     */
+    protected void notifyAllConnectionResetServer() {
+        final ConnectionResetServerRequest connectionResetServerRequest = new ConnectionResetServerRequest();
+        log.warn("[{}]Grpc requestBi ConnectionResetServerRequest", "notifyAllConnectionResetServer");
+        for (Connection connection : BaseOpcRpcServer.this.connectionManager.getConnections()) {
+            try {
+                connection.asyncRequest(connectionResetServerRequest);
+            } catch (OpcConnectionException connEx) {
+                log.warn("[{}]Grpc requestBi ConnectionResetServerRequest connEx", connection.getConnectionId(), connEx);
+            } catch (Exception unknownEx) {
+                log.error("[{}]Grpc requestBi ConnectionResetServerRequest error", connection.getConnectionId(), unknownEx);
+            }
+        }
+    }
 
     @Override
     public void registerClientRequestHandler(Class<? extends ClientRequest> requestClass,
@@ -203,11 +229,13 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     @Override
     public void close() {
+        this.notifyAllConnectionResetServer();
+
         if (this.server != null) {
             log.info("Shutdown server {}", this.server);
             try {
                 this.server.shutdown();
-                ConnectionManager.removeAndCloseAll();
+                BaseOpcRpcServer.this.connectionManager.removeAndCloseAll();
                 this.server.awaitTermination(5, TimeUnit.SECONDS);
             } catch (InterruptedException ignore) {
                 Thread.currentThread().interrupt();
@@ -248,7 +276,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 io.grpc.stub.StreamObserver<io.opc.rpc.core.grpc.auto.Payload> responseObserver) {
 
             final String connectionId = CONTEXT_KEY_CONN_ID.get();
-            ConnectionManager.refreshActiveTime(connectionId);
+            BaseOpcRpcServer.this.connectionManager.refreshActiveTime(connectionId);
             final io.opc.rpc.api.Payload payloadObj;
             try {
                 payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
@@ -309,7 +337,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 @Override
                 public void onNext(Payload requestPayload) {
 
-                    ConnectionManager.refreshActiveTime(connectionId);
+                    BaseOpcRpcServer.this.connectionManager.refreshActiveTime(connectionId);
                     final io.opc.rpc.api.Payload payloadObj;
                     try {
                         payloadObj = PayloadObjectHelper.buildApiPayload(requestPayload);
@@ -333,7 +361,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                         connection.setEndpoint(new Endpoint(remoteIp, remotePort));
                         connection.setClientName(clientName);
                         connection.setLabels(labels);
-                        ConnectionManager.holdAndCloseOld(connection);
+                        BaseOpcRpcServer.this.connectionManager.holdAndCloseOld(connection);
 
                         ConnectionSetupServerResponse setupResponse = new ConnectionSetupServerResponse();
                         setupResponse.setRequestId(setupRequest.getRequestId());
@@ -381,7 +409,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                  * must have a lock around the streamObserver.onNext(), so use GrpcConnection synchronized do it
                  */
                 private void doResponseWithConnectionFirst(Response response) {
-                    final Connection connection = ConnectionManager.getConnection(connectionId);
+                    final Connection connection = BaseOpcRpcServer.this.connectionManager.getConnection(connectionId);
                     if (connection != null) {
                         connection.asyncResponse(response);
                     } else {

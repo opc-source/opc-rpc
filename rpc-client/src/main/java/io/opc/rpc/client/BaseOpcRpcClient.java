@@ -10,6 +10,8 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
+import io.opc.rpc.api.Connection;
+import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.RequestHandler;
@@ -24,10 +26,8 @@ import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.response.ResponseCode;
 import io.opc.rpc.api.response.ServerResponse;
-import io.opc.rpc.core.Endpoint;
 import io.opc.rpc.core.RequestCallbackSupport;
 import io.opc.rpc.core.connection.ClientGrpcConnection;
-import io.opc.rpc.core.connection.Connection;
 import io.opc.rpc.core.connection.ConnectionManager;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
 import io.opc.rpc.core.grpc.auto.Payload;
@@ -124,7 +124,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         this.scheduledExecutor.scheduleWithFixedDelay(() -> {
             final Endpoint poll = this.reconnectionSignal.poll();
             if (poll != null) {
-                reconnect(poll);
+                this.reconnect(poll);
             }
         }, 1000L, 1000L, TimeUnit.MILLISECONDS);
         // keepActive in client
@@ -158,11 +158,11 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         }
     }
 
-    protected void asyncSwitchServer(@Nullable Endpoint target) {
+    protected void syncSwitchServer(@Nullable Endpoint target) {
         if (target != null) {
-            this.reconnectionSignal.offer(target);
+            this.reconnect(target);
         } else {
-            this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
+            this.reconnect(Endpoint.randomOneExclude(this.endpoints, this.currentConnection.getEndpoint()));
         }
     }
 
@@ -245,7 +245,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                             grpcConnection.getConnectionId(), payloadObj);
                     final ConnectionResetServerRequest connectionResetRequest = (ConnectionResetServerRequest) payloadObj;
 
-                    BaseOpcRpcClient.this.asyncSwitchServer(connectionResetRequest.getEndpoint());
+                    BaseOpcRpcClient.this.syncSwitchServer(connectionResetRequest.getEndpoint());
 
                     final ConnectionResetClientResponse connectionResetResponse = new ConnectionResetClientResponse();
                     connectionResetResponse.setRequestId(connectionResetRequest.getRequestId());

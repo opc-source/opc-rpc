@@ -3,6 +3,7 @@ package io.opc.rpc.core.connection;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.opc.rpc.api.Connection;
 import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcConnectionException;
@@ -40,10 +41,10 @@ public class GrpcConnection extends BaseConnection implements Connection {
         final Payload grpcPayload = PayloadObjectHelper.buildGrpcPayload(payload);
         // StreamObserver#onNext() is not thread-safe, synchronized is required to avoid direct memory leak.
         synchronized (biStreamObserver) {
-            // maybe connection already closed with throw StatusRuntimeException or state not right with throw  IllegalStateException
+            // maybe connection already closed with throw StatusRuntimeException
             try {
                 biStreamObserver.onNext(grpcPayload);
-            } catch (StatusRuntimeException | IllegalStateException statusEx) {
+            } catch (StatusRuntimeException statusEx) {
                 throw new OpcConnectionException(ExceptionCode.CONNECTION_ERROR, statusEx);
             }
         }
@@ -69,6 +70,7 @@ public class GrpcConnection extends BaseConnection implements Connection {
         } catch (Exception ex) {
             // Clear callback if exception
             RequestCallbackSupport.clearCallback(this.getConnectionId(), request.getRequestId());
+            throw ex;
         }
     }
 

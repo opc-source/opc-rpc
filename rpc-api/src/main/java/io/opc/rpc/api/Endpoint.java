@@ -1,4 +1,4 @@
-package io.opc.rpc.core;
+package io.opc.rpc.api;
 
 import io.opc.rpc.api.constant.OpcConstants;
 import java.util.Arrays;

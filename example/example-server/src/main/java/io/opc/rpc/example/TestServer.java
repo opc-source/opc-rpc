@@ -3,11 +3,10 @@ package io.opc.rpc.example;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
+import io.opc.rpc.api.Connection;
 import io.opc.rpc.api.OpcRpcFactory;
 import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.constant.OpcConstants.Server;
-import io.opc.rpc.core.connection.Connection;
-import io.opc.rpc.core.connection.ConnectionManager;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -36,33 +35,15 @@ public class TestServer {
         properties2.put(Server.KEY_OPC_RPC_SERVER_PORT, 6667);
         final OpcRpcServer rpcServer2 = getOpcRpcServer(properties2);
 
-        TimeUnit.SECONDS.sleep(120);
-        STOP.set(true);
-        rpcServer1.close();
-        rpcServer2.close();
-        TimeUnit.MILLISECONDS.sleep(100);
-    }
-
-    private static OpcRpcServer getOpcRpcServer(Properties properties2) {
-        final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties2);
-
-        PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
-        rpcServer.registerClientRequestHandler(ClientTestClientRequest.class, new ClientTestRequestHandler());
-        PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
-
         //noinspection AlibabaAvoidManuallyCreateThread
         new Thread(() -> {
             while (!STOP.get()) {
-                // ConnectionManager TODO rpcServer independent
-                for (Connection connection : ConnectionManager.getConnections()) {
-                    final ServerTestServerRequest testServerRequest = new ServerTestServerRequest();
-                    testServerRequest.setServer(System.currentTimeMillis() + "");
-                    try {
-                        connection.asyncRequest(testServerRequest);
-                    } catch (Exception e) {
-                        // ignore
-                        log.error("connection.asyncRequest error,{}", connection, e);
-                    }
+                for (Connection connection : rpcServer1.getConnections()) {
+                    sendServerTestServerRequest(connection);
+                }
+
+                for (Connection connection : rpcServer2.getConnections()) {
+                    sendServerTestServerRequest(connection);
                 }
 
                 try {
@@ -73,6 +54,33 @@ public class TestServer {
                 }
             }
         }).start();
+
+        TimeUnit.SECONDS.sleep(12);
+        rpcServer1.close();
+        TimeUnit.SECONDS.sleep(120);
+        STOP.set(true);
+        rpcServer2.close();
+        TimeUnit.MILLISECONDS.sleep(100);
+    }
+
+    private static void sendServerTestServerRequest(Connection connection) {
+        final ServerTestServerRequest testServerRequest = new ServerTestServerRequest();
+        testServerRequest.setServer(String.valueOf(System.currentTimeMillis()));
+        try {
+            connection.asyncRequest(testServerRequest);
+        } catch (Exception e) {
+            // ignore
+            log.error("connection.asyncRequest error,{}", connection, e);
+        }
+    }
+
+    private static OpcRpcServer getOpcRpcServer(Properties properties2) {
+        final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties2);
+
+        PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
+        rpcServer.registerClientRequestHandler(ClientTestClientRequest.class, new ClientTestRequestHandler());
+        PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
+
         return rpcServer;
     }
 

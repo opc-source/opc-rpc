@@ -1,7 +1,7 @@
 package io.opc.rpc.core.request;
 
+import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.request.ServerRequest;
-import io.opc.rpc.core.Endpoint;
 import io.opc.rpc.core.annotation.Internal;
 import lombok.Getter;
 import lombok.Setter;

@@ -31,14 +31,14 @@ public class TestClient {
     public static void main(String[] args) throws Exception {
 
         final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
+        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.WARN);
 
         final Properties properties = new Properties();
         properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_NAME, "localTest");
         properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost,127.0.0.1:6667");
 
         final OpcRpcClient rpcClient1 = getOpcRpcClient(properties);
-        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost");
+        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost:6666,localhost:6667");
         final OpcRpcClient rpcClient2 = getOpcRpcClient(properties);
         properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "127.0.0.1:6667");
         final OpcRpcClient rpcClient3 = getOpcRpcClient(properties);

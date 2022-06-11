@@ -1,9 +1,7 @@
-package io.opc.rpc.core.connection;
+package io.opc.rpc.api;
 
-import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.response.Response;
-import io.opc.rpc.core.Endpoint;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 

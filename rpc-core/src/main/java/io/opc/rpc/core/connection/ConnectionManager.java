@@ -1,10 +1,10 @@
 package io.opc.rpc.core.connection;
 
+import io.opc.rpc.api.Connection;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import lombok.experimental.UtilityClass;
 
 /**
  * ConnectionManager.
@@ -12,10 +12,9 @@ import lombok.experimental.UtilityClass;
  * @author caihongwen
  * @version Id: ConnectionManager.java, v 0.1 2022年06月03日 12:01 caihongwen Exp $
  */
-@UtilityClass
 public class ConnectionManager {
 
-    private static final Map<String/*connectionId*/, Connection> connectionMap = new ConcurrentHashMap<>(16);
+    private final Map<String/*connectionId*/, Connection> connectionMap = new ConcurrentHashMap<>(256);
 
     /**
      * get Connection.
