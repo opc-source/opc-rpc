@@ -137,8 +137,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
      */
     protected Server getServer(int serverPort) {
         return ServerBuilder.forPort(serverPort).executor(this.executor)
+                .addTransportFilter(new WrapAttributeAndConnectionServerTransportFilter())
+                .addService(ServerInterceptors.intercept(new OpcGrpcServiceImpl(), new AttributeToContextServerInterceptor()))
                 .fallbackHandlerRegistry(this.getFallbackHandlerRegistry())
-                .addTransportFilter(this.getServerTransportFilter())
                 .build();
     }
 
@@ -146,16 +147,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
      * Inheritance and then customize addService? It's all up to you. You also can hold MutableHandlerRegistry for dynamic add Service.
      */
     protected MutableHandlerRegistry getFallbackHandlerRegistry() {
-        final MutableHandlerRegistry handlerRegistry = new MutableHandlerRegistry();
-        handlerRegistry.addService(ServerInterceptors.intercept(new OpcGrpcServiceImpl(), new AttributeToContextServerInterceptor()));
-        return handlerRegistry;
-    }
-
-    /**
-     * Inheritance and then customize ServerTransportFilter? It's all up to you.
-     */
-    protected ServerTransportFilter getServerTransportFilter() {
-        return new WrapAttributeAndConnectionServerTransportFilter();
+        return new MutableHandlerRegistry();
     }
 
     /**
