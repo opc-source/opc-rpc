@@ -73,7 +73,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    protected volatile AtomicReference<OpcRpcStatus> rpcClientStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
+    protected final AtomicReference<OpcRpcStatus> rpcClientStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
 
     protected long keepActive = OpcConstants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE;
 

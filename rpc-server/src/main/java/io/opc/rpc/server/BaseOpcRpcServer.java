@@ -73,7 +73,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     protected final Logger log = LoggerFactory.getLogger(this.getClass());
 
-    protected volatile AtomicReference<OpcRpcStatus> rpcServerStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
+    protected final AtomicReference<OpcRpcStatus> rpcServerStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
 
     protected long keepActive = OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE;
 
