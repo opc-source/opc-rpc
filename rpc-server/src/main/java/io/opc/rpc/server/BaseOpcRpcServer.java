@@ -21,7 +21,7 @@ import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcServer;
 import io.opc.rpc.api.OpcRpcStatus;
 import io.opc.rpc.api.RequestHandler;
-import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.constant.Constants;
 import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.exception.OpcRpcRuntimeException;
@@ -75,7 +75,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
 
     protected volatile AtomicReference<OpcRpcStatus> rpcServerStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
 
-    protected long keepActive = OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE;
+    protected long keepActive = Constants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE;
 
     protected ThreadPoolExecutor executor;
 
@@ -96,10 +96,10 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
             return;
         }
 
-        this.keepActive = (Long) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_KEEP_ACTIVE,
-                OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE);
-        final Integer serverPort = (Integer) properties.getOrDefault(OpcConstants.Server.KEY_OPC_RPC_SERVER_PORT,
-                OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
+        this.keepActive = (Long) properties.getOrDefault(Constants.Server.KEY_OPC_RPC_SERVER_KEEP_ACTIVE,
+                Constants.Server.DEFAULT_OPC_RPC_SERVER_KEEP_ACTIVE);
+        final Integer serverPort = (Integer) properties.getOrDefault(Constants.Server.KEY_OPC_RPC_SERVER_PORT,
+                Constants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
         this.executor = this.createServerExecutor(serverPort);
 
         // subclass init

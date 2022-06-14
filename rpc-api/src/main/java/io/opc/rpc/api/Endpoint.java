@@ -1,6 +1,6 @@
 package io.opc.rpc.api;
 
-import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.constant.Constants;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -35,7 +35,7 @@ public class Endpoint {
      * @return address like ip:port
      */
     public String getAddress() {
-        return this.ip + OpcConstants.COLON + this.port;
+        return this.ip + Constants.COLON + this.port;
     }
 
     /**
@@ -46,15 +46,15 @@ public class Endpoint {
      */
     public static Set<Endpoint> resolveServerAddress(@Nonnull String serverAddress) {
 
-        final String[] addressArr = serverAddress.split(OpcConstants.COMMA);
+        final String[] addressArr = serverAddress.split(Constants.COMMA);
 
         return Arrays.stream(addressArr).map(address -> {
             address = address.trim();
-            if (address.contains(OpcConstants.COLON)) {
-                final String[] hostAndPort = address.split(OpcConstants.COLON);
+            if (address.contains(Constants.COLON)) {
+                final String[] hostAndPort = address.split(Constants.COLON);
                 return new Endpoint(hostAndPort[0], Integer.parseInt(hostAndPort[1]));
             } else {
-                return new Endpoint(address, OpcConstants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
+                return new Endpoint(address, Constants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
             }
         }).collect(Collectors.toSet());
     }

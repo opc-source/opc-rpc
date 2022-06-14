@@ -16,7 +16,7 @@ import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.OpcRpcStatus;
 import io.opc.rpc.api.RequestCallback;
 import io.opc.rpc.api.RequestHandler;
-import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.constant.Constants;
 import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.request.ClientRequest;
@@ -75,7 +75,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
     protected volatile AtomicReference<OpcRpcStatus> rpcClientStatus = new AtomicReference<>(OpcRpcStatus.WAIT_INIT);
 
-    protected long keepActive = OpcConstants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE;
+    protected long keepActive = Constants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE;
 
     /**
      * Client Name.
@@ -108,11 +108,11 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         if (!this.rpcClientStatus.compareAndSet(OpcRpcStatus.WAIT_INIT, OpcRpcStatus.STARTING)) {
             return;
         }
-        this.keepActive = (Long) properties.getOrDefault(OpcConstants.Client.KEY_OPC_RPC_CLIENT_KEEP_ACTIVE,
-                OpcConstants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE);
+        this.keepActive = (Long) properties.getOrDefault(Constants.Client.KEY_OPC_RPC_CLIENT_KEEP_ACTIVE,
+                Constants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE);
         // eg: localhost:12345,domain:12344,127.0.0.1:12343
-        final String serverAddress = properties.getProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS);
-        this.clientName = (String) properties.getOrDefault(OpcConstants.Client.KEY_OPC_RPC_CLIENT_NAME, serverAddress);
+        final String serverAddress = properties.getProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS);
+        this.clientName = (String) properties.getOrDefault(Constants.Client.KEY_OPC_RPC_CLIENT_NAME, serverAddress);
         this.endpoints = Endpoint.resolveServerAddress(serverAddress);
 
         this.executor = createClientExecutor(serverAddress);

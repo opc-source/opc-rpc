@@ -6,7 +6,7 @@ import ch.qos.logback.classic.LoggerContext;
 import io.opc.rpc.api.Connection;
 import io.opc.rpc.api.OpcRpcFactory;
 import io.opc.rpc.api.OpcRpcServer;
-import io.opc.rpc.api.constant.OpcConstants.Server;
+import io.opc.rpc.api.constant.Constants.Server;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;

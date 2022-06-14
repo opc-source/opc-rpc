@@ -1,6 +1,6 @@
 package io.opc.rpc.api;
 
-import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.constant.Constants;
 import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcRpcRuntimeException;
 import java.util.Objects;
@@ -28,7 +28,7 @@ public class OpcRpcFactory {
         Objects.requireNonNull(serverAddress, "serverAddress is null");
 
         Properties properties = new Properties();
-        properties.put(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, serverAddress);
+        properties.put(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, serverAddress);
         return createOpcClient(properties);
     }
 

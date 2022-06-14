@@ -4,12 +4,12 @@ package io.opc.rpc.api.constant;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Opc Constants.
+ * Constants.
  *
  * @author caihongwen
- * @version Id: OpcConstants.java, v 0.1 2022年06月02日 22:08 caihongwen Exp $
+ * @version Id: Constants.java, v 0.1 2022年06月02日 22:08 caihongwen Exp $
  */
-public interface OpcConstants {
+public interface Constants {
 
     String COLON = ":";
 

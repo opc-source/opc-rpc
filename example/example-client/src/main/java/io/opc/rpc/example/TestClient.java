@@ -6,7 +6,7 @@ import ch.qos.logback.classic.LoggerContext;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.OpcRpcFactory;
 import io.opc.rpc.api.RequestCallback;
-import io.opc.rpc.api.constant.OpcConstants;
+import io.opc.rpc.api.constant.Constants;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.core.util.PayloadClassHelper;
@@ -34,13 +34,13 @@ public class TestClient {
         loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.WARN);
 
         final Properties properties = new Properties();
-        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_NAME, "localTest");
-        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost,127.0.0.1:6667");
+        properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_NAME, "localTest");
+        properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost,127.0.0.1:6667");
 
         final OpcRpcClient rpcClient1 = getOpcRpcClient(properties);
-        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost:6666,localhost:6667");
+        properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost:6666,localhost:6667");
         final OpcRpcClient rpcClient2 = getOpcRpcClient(properties);
-        properties.setProperty(OpcConstants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "127.0.0.1:6667");
+        properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "127.0.0.1:6667");
         final OpcRpcClient rpcClient3 = getOpcRpcClient(properties);
 
         TimeUnit.SECONDS.sleep(ThreadLocalRandom.current().nextInt(15, 30));
@@ -53,7 +53,6 @@ public class TestClient {
 
     private static OpcRpcClient getOpcRpcClient(Properties properties) {
         final OpcRpcClient rpcClient = OpcRpcFactory.createOpcClient(properties);
-        rpcClient.init(properties);
 
         PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
         PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
