@@ -2,10 +2,13 @@ package io.opc.rpc.core.handle;
 
 import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.request.Request;
+import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
+import io.opc.rpc.api.response.ResponseCode;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
+import org.slf4j.LoggerFactory;
 
 /**
  * RequestHandlerSupport.
@@ -31,7 +34,12 @@ public class RequestHandlerSupport {
         if (requestHandler == null) {
             return null;
         }
-        return requestHandler.requestReply(request);
+        try {
+            return requestHandler.requestReply(request);
+        } catch (Exception e) {
+            LoggerFactory.getLogger(requestHandler.getClass()).error("[RequestHandler] invoke requestReply error", e);
+            return ErrorResponse.build(ResponseCode.HANDLE_REQUEST_ERROR.getCode(), e.getMessage());
+        }
     }
 
 }

@@ -34,6 +34,11 @@ public enum ResponseCode {
     HANDLE_REQUEST_NULL(535, "HandleRequest get null, maybe has no relevant RequestHandler."),
 
     /**
+     * HandleRequest catch error
+     */
+    HANDLE_REQUEST_ERROR(536, "HandleRequest catch error, please check the error log."),
+
+    /**
      * Server unhealthy
      */
     SERVER_UNHEALTHY(555, "Server unhealthy."),
