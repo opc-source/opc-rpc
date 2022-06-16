@@ -372,7 +372,15 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             // refresh connection activeTime for client
             grpcConnection.refreshActiveTime();
 
-            final io.opc.rpc.api.Payload payloadObj = PayloadObjectHelper.buildApiPayload(value);
+            final io.opc.rpc.api.Payload payloadObj;
+            try {
+                payloadObj = PayloadObjectHelper.buildApiPayload(value);
+            } catch (Exception e) {
+                log.error("[{}] responseBiStreamObserver,payload deserialize error", grpcConnection.getConnectionId(), e);
+                ErrorResponse errorResponse = ErrorResponse.build(ResponseCode.FAIL.getCode(), e.getMessage());
+                grpcConnection.responseAsync(errorResponse);
+                return;
+            }
             // ConnectionResetServerRequest
             if (payloadObj instanceof ConnectionResetServerRequest) {
                 log.warn("[{}] responseBiStreamObserver receive an ConnectionResetServerRequest,payloadObj={}",

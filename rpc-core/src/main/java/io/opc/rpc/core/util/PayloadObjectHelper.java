@@ -19,6 +19,14 @@ public class PayloadObjectHelper {
             .putAllHeaders(Collections.emptyMap())
             .build();
 
+    /**
+     * build {@link io.opc.rpc.api.Payload} from {@link io.opc.rpc.core.grpc.auto.Payload}
+     *
+     * <p>
+     * Attention: <br>
+     * PayloadClassHelper.getClass(grpcPayload.getBody().getTypeUrl() maybe null if not PayloadClassHelper.register first.
+     * </p>
+     */
     public <T extends io.opc.rpc.api.Payload> T buildApiPayload(io.opc.rpc.core.grpc.auto.Payload grpcPayload) {
 
         final T apiPayload = JsonSerialization.deserialize(
@@ -32,6 +40,9 @@ public class PayloadObjectHelper {
         return apiPayload;
     }
 
+    /**
+     * build {@link io.opc.rpc.core.grpc.auto.Payload} from {@link io.opc.rpc.api.Payload}
+     */
     public <T extends io.opc.rpc.api.Payload> io.opc.rpc.core.grpc.auto.Payload buildGrpcPayload(T apiPayload) {
 
         io.opc.rpc.core.grpc.auto.Metadata metadata = EMPTY;
