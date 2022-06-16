@@ -35,7 +35,8 @@ public class PayloadObjectHelper {
     public <T extends io.opc.rpc.api.Payload> io.opc.rpc.core.grpc.auto.Payload buildGrpcPayload(T apiPayload) {
 
         io.opc.rpc.core.grpc.auto.Metadata metadata = EMPTY;
-        if (apiPayload instanceof Request) {
+        if ((apiPayload instanceof Request)
+                && !((Request) apiPayload).getHeaders().isEmpty()) {
             // Request.headers set into Metadata.headers
             metadata = io.opc.rpc.core.grpc.auto.Metadata.newBuilder()
                     .putAllHeaders(((Request) apiPayload).getHeaders()).build();
