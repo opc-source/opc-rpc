@@ -26,6 +26,7 @@ public class PayloadObjectHelper {
                 PayloadClassHelper.getClass(grpcPayload.getBody().getTypeUrl())
         );
         if (apiPayload instanceof Request) {
+            // Request.headers get from Metadata.headers
             ((Request) apiPayload).setHeaders(grpcPayload.getMetadata().getHeadersMap());
         }
         return apiPayload;
@@ -35,8 +36,11 @@ public class PayloadObjectHelper {
 
         io.opc.rpc.core.grpc.auto.Metadata metadata = EMPTY;
         if (apiPayload instanceof Request) {
+            // Request.headers set into Metadata.headers
             metadata = io.opc.rpc.core.grpc.auto.Metadata.newBuilder()
                     .putAllHeaders(((Request) apiPayload).getHeaders()).build();
+            // clear Request.headers
+            ((Request) apiPayload).getHeaders().clear();
         }
         return io.opc.rpc.core.grpc.auto.Payload.newBuilder()
                 .setMetadata(metadata)
