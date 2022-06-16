@@ -67,7 +67,7 @@ public class TestServer {
         final ServerTestServerRequest testServerRequest = new ServerTestServerRequest();
         testServerRequest.setServer(String.valueOf(System.currentTimeMillis()));
         try {
-            connection.asyncRequest(testServerRequest);
+            connection.requestAsync(testServerRequest);
         } catch (Exception e) {
             // ignore
             log.error("connection.asyncRequest error,{}", connection, e);

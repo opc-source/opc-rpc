@@ -2,8 +2,10 @@ package io.opc.rpc.core.connection;
 
 import io.grpc.ManagedChannel;
 import io.grpc.stub.StreamObserver;
-import io.opc.rpc.api.response.Response;
 import io.opc.rpc.api.RequestCallback;
+import io.opc.rpc.api.RequestFuture;
+import io.opc.rpc.api.exception.OpcConnectionException;
+import io.opc.rpc.api.response.Response;
 import io.opc.rpc.core.grpc.auto.Payload;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
@@ -29,12 +31,22 @@ public class ClientGrpcConnection extends GrpcConnection {
     }
 
     @Override
-    public void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request,
-            @Nullable RequestCallback<? extends Response> requestCallback) {
+    public void requestAsync(@Nonnull io.opc.rpc.api.request.Request request,
+            @Nullable RequestCallback<? extends Response> requestCallback) throws OpcConnectionException {
 
-        super.asyncRequest(request, requestCallback);
+        super.requestAsync(request, requestCallback);
         // refreshActiveTime for client
         this.refreshActiveTime();
+    }
+
+    @Override
+    public <T extends Response> RequestFuture<T> requestFuture(@Nonnull io.opc.rpc.api.request.Request request)
+            throws OpcConnectionException {
+
+        final RequestFuture<T> future = super.requestFuture(request);
+        // refreshActiveTime for client
+        this.refreshActiveTime();
+        return future;
     }
 
     @Override

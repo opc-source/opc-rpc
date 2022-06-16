@@ -156,7 +156,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
     private void notifyActiveTimeoutConnectionClientDetection() {
         for (Connection connection : BaseOpcRpcServer.this.connectionManager.getActiveTimeoutConnections(this.keepActive)) {
             try {
-                connection.asyncRequest(new ClientDetectionServerRequest());
+                connection.requestAsync(new ClientDetectionServerRequest());
             } catch (OpcConnectionException connEx) {
                 log.warn("[{}]Grpc requestBi ClientDetectionServerRequest connEx", connection.getConnectionId(), connEx);
                 BaseOpcRpcServer.this.connectionManager.removeAndClose(connection.getConnectionId());
@@ -175,7 +175,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         log.warn("[{}]Grpc requestBi ConnectionResetServerRequest", "notifyAllConnectionResetServer");
         for (Connection connection : BaseOpcRpcServer.this.connectionManager.getConnections()) {
             try {
-                connection.asyncRequest(connectionResetServerRequest);
+                connection.requestAsync(connectionResetServerRequest);
             } catch (OpcConnectionException connEx) {
                 log.warn("[{}]Grpc requestBi ConnectionResetServerRequest connEx", connection.getConnectionId(), connEx);
             } catch (Exception unknownEx) {
@@ -466,7 +466,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
                 private void doResponseWithConnectionFirst(Response response) {
                     final Connection connection = BaseOpcRpcServer.this.connectionManager.getConnection(connectionId);
                     if (connection != null) {
-                        connection.asyncResponse(response);
+                        connection.responseAsync(response);
                     } else {
                         responseObserver.onNext(PayloadObjectHelper.buildGrpcPayload(response));
                     }

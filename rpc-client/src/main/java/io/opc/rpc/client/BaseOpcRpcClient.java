@@ -15,6 +15,7 @@ import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcClient;
 import io.opc.rpc.api.OpcRpcStatus;
 import io.opc.rpc.api.RequestCallback;
+import io.opc.rpc.api.RequestFuture;
 import io.opc.rpc.api.RequestHandler;
 import io.opc.rpc.api.constant.Constants;
 import io.opc.rpc.api.exception.ExceptionCode;
@@ -143,7 +144,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             // last active timeout will do check with ServerDetectionClientRequest
             if (this.currentConnection != null && ConnectionManager.isActiveTimeout(this.currentConnection, this.keepActive)) {
                 try {
-                    this.currentConnection.asyncRequest(new ServerDetectionClientRequest());
+                    this.currentConnection.requestAsync(new ServerDetectionClientRequest());
                 } catch (OpcConnectionException connEx) {
                     log.warn("[{}]requestBi ServerDetectionClientRequest connEx", this.currentConnection.getConnectionId(), connEx);
                     this.asyncSwitchServerExclude(this.currentConnection.getEndpoint());
@@ -253,7 +254,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         final ConnectionSetupClientRequest setupClientRequest = ConnectionSetupClientRequest.builder()
                 .clientName(this.clientName)
                 .labels(this.labels).build();
-        grpcConnection.asyncRequest(setupClientRequest);
+        grpcConnection.requestAsync(setupClientRequest);
 
         log.info("connect to server success,connection={} with serverAddress={}", grpcConnection.getConnectionId(), endpoint.getAddress());
         return grpcConnection;
@@ -299,14 +300,25 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     }
 
     @Override
-    public void asyncRequest(@Nonnull ClientRequest request, @Nullable RequestCallback<? extends ServerResponse> requestCallback)
+    public void requestAsync(@Nonnull ClientRequest request, @Nullable RequestCallback<? extends ServerResponse> requestCallback)
             throws OpcConnectionException {
         if (this.currentConnection == null) {
             throw new OpcConnectionException(ExceptionCode.CONNECTION_ERROR);
         } else if (!OpcRpcStatus.RUNNING.equals(this.rpcClientStatus.get())) {
             throw new OpcConnectionException(ExceptionCode.CONNECTION_UNHEALTHY);
         }
-        this.currentConnection.asyncRequest(request, requestCallback);
+        this.currentConnection.requestAsync(request, requestCallback);
+    }
+
+    @Override
+    public RequestFuture<ServerResponse> requestFuture(@Nonnull ClientRequest request) throws OpcConnectionException {
+
+        if (this.currentConnection == null) {
+            throw new OpcConnectionException(ExceptionCode.CONNECTION_ERROR);
+        } else if (!OpcRpcStatus.RUNNING.equals(this.rpcClientStatus.get())) {
+            throw new OpcConnectionException(ExceptionCode.CONNECTION_UNHEALTHY);
+        }
+        return this.currentConnection.requestFuture(request);
     }
 
     @Override
@@ -372,7 +384,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 final ConnectionResetClientResponse connectionResetResponse = new ConnectionResetClientResponse();
                 connectionResetResponse.setRequestId(connectionResetRequest.getRequestId());
                 // do response
-                grpcConnection.asyncResponse(connectionResetResponse);
+                grpcConnection.responseAsync(connectionResetResponse);
             }
             // ServerRequest
             else if (payloadObj instanceof ServerRequest) {
@@ -385,7 +397,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 }
                 response.setRequestId(serverRequest.getRequestId());
                 // do response
-                grpcConnection.asyncResponse(response);
+                grpcConnection.responseAsync(response);
             }
             // ServerDetectionServerResponse
             else if (payloadObj instanceof ServerDetectionServerResponse) {

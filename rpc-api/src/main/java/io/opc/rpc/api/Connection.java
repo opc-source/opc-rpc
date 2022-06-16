@@ -40,7 +40,7 @@ public interface Connection {
      * @param response Response
      * @throws OpcConnectionException OpcConnectionException
      */
-    void asyncResponse(@Nonnull io.opc.rpc.api.response.Response response) throws OpcConnectionException;
+    void responseAsync(@Nonnull io.opc.rpc.api.response.Response response) throws OpcConnectionException;
 
     /**
      * async send Request.
@@ -48,8 +48,8 @@ public interface Connection {
      * @param request Request
      * @throws OpcConnectionException OpcConnectionException
      */
-    default void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request) throws OpcConnectionException {
-        asyncRequest(request, null);
+    default void requestAsync(@Nonnull io.opc.rpc.api.request.Request request) throws OpcConnectionException {
+        requestAsync(request, null);
     }
 
     /**
@@ -59,8 +59,17 @@ public interface Connection {
      * @param requestCallback RequestCallback<R extends Response>, null means do not care about is.
      * @throws OpcConnectionException OpcConnectionException
      */
-    void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request, @Nullable RequestCallback<? extends Response> requestCallback)
+    void requestAsync(@Nonnull io.opc.rpc.api.request.Request request, @Nullable RequestCallback<? extends Response> requestCallback)
             throws OpcConnectionException;
+
+    /**
+     * async send Request. waiting a Response.
+     *
+     * @param request Request
+     * @return RequestFuture<T extends Response>
+     * @throws OpcConnectionException OpcConnectionException
+     */
+    <T extends Response> RequestFuture<T> requestFuture(@Nonnull io.opc.rpc.api.request.Request request) throws OpcConnectionException;
 
     /**
      * close.

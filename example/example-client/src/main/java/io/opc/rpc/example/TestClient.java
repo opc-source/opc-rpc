@@ -63,7 +63,7 @@ public class TestClient {
             while (!STOP.get()) {
                 final ClientTestClientRequest testClientRequest = new ClientTestClientRequest();
                 try {
-                    rpcClient.asyncRequest(testClientRequest, new RequestCallback<ClientTestServerResponse>() {
+                    rpcClient.requestAsync(testClientRequest, new RequestCallback<ClientTestServerResponse>() {
                         @Override
                         public Executor getExecutor() {
                             return ForkJoinPool.commonPool();

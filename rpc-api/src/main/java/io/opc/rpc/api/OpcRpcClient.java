@@ -42,7 +42,16 @@ public interface OpcRpcClient extends AutoCloseable {
      * @param requestCallback RequestCallback<R extends Response>, null means do not care about is.
      * @throws OpcConnectionException OpcConnectionException
      */
-    void asyncRequest(@Nonnull ClientRequest request, @Nullable RequestCallback<? extends ServerResponse> requestCallback)
+    void requestAsync(@Nonnull ClientRequest request, @Nullable RequestCallback<? extends ServerResponse> requestCallback)
             throws OpcConnectionException;
+
+    /**
+     * async send Request. waiting a Response.
+     *
+     * @param request Request
+     * @return RequestFuture<R extends ServerResponse>
+     * @throws OpcConnectionException OpcConnectionException
+     */
+    RequestFuture<? extends ServerResponse> requestFuture(@Nonnull ClientRequest request) throws OpcConnectionException;
 
 }

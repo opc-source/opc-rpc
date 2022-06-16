@@ -1,16 +1,20 @@
 package io.opc.rpc.core.connection;
 
+import com.google.common.util.concurrent.MoreExecutors;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.opc.rpc.api.Connection;
 import io.opc.rpc.api.RequestCallback;
+import io.opc.rpc.api.RequestFuture;
 import io.opc.rpc.api.exception.ExceptionCode;
 import io.opc.rpc.api.exception.OpcConnectionException;
 import io.opc.rpc.api.response.Response;
 import io.opc.rpc.core.RequestCallbackSupport;
+import io.opc.rpc.core.RequestFutureTask;
 import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.util.PayloadObjectHelper;
+import java.util.concurrent.Executor;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import lombok.Builder;
@@ -51,12 +55,12 @@ public class GrpcConnection extends BaseConnection implements Connection {
     }
 
     @Override
-    public void asyncResponse(@Nonnull Response response) throws OpcConnectionException {
+    public void responseAsync(@Nonnull Response response) throws OpcConnectionException {
         this.payloadNoAck(response);
     }
 
     @Override
-    public void asyncRequest(@Nonnull io.opc.rpc.api.request.Request request,
+    public void requestAsync(@Nonnull io.opc.rpc.api.request.Request request,
             @Nullable RequestCallback<? extends Response> requestCallback) throws OpcConnectionException {
 
         // First async listening a Response with requestCallback(if not null).
@@ -72,6 +76,18 @@ public class GrpcConnection extends BaseConnection implements Connection {
             RequestCallbackSupport.clearCallback(this.getConnectionId(), request.getRequestId());
             throw ex;
         }
+    }
+
+    @Override
+    public <T extends Response> RequestFuture<T> requestFuture(@Nonnull io.opc.rpc.api.request.Request request)
+            throws OpcConnectionException {
+
+        final RequestFutureTask<T> future = new RequestFutureTask<>(this.getConnectionId(), request.getRequestId());
+        // maybe supply an executor
+        final Executor executor = MoreExecutors.directExecutor();
+        this.requestAsync(request, future.buildInvokeByRequestCallback(executor));
+
+        return future;
     }
 
     @Override
