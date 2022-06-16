@@ -39,11 +39,13 @@ import io.opc.rpc.core.connection.GrpcConnection;
 import io.opc.rpc.core.grpc.auto.OpcGrpcServiceGrpc;
 import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.handle.BaseRequestHandler;
+import io.opc.rpc.server.handle.LoginRequestHandler;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
 import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
+import io.opc.rpc.core.request.LoginClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
@@ -101,6 +103,9 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         final Integer serverPort = (Integer) properties.getOrDefault(Constants.Server.KEY_OPC_RPC_SERVER_PORT,
                 Constants.Server.DEFAULT_OPC_RPC_SERVER_PORT);
         this.executor = this.createServerExecutor(serverPort);
+
+        // register LoginRequestHandler for LoginClientRequest, tobe a good practice of RequestHandler
+        this.registerClientRequestHandler(LoginClientRequest.class, new LoginRequestHandler());
 
         // subclass init
         this.doInit(properties);

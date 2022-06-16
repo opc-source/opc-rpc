@@ -2,8 +2,11 @@ package io.opc.rpc.api.request;
 
 import io.opc.rpc.api.Payload;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * Request.
@@ -60,6 +63,37 @@ public abstract class Request implements Payload {
     public void setHeaders(Map<String, String> headers) {
         Objects.requireNonNull(headers, "headers is null");
         this.headers = headers;
+    }
+
+    /**
+     * put a key/val into headers
+     */
+    public synchronized void putHeaderIfValNonnull(@Nonnull String key, @Nullable String val) {
+        if (val != null) {
+            this.putHeader(key, val);
+        }
+    }
+
+    /**
+     * put a key/val into headers
+     */
+    public synchronized void putHeader(@Nonnull String key, @Nonnull String val) {
+        Objects.requireNonNull(val, "val is null");
+        if (Collections.emptyMap().equals(this.headers)) {
+            this.headers = new HashMap<>(8);
+        }
+        this.headers.put(key, val);
+    }
+
+    /**
+     * put key/val into headers
+     */
+    public synchronized void putHeaders(Map<String, String> headers) {
+        Objects.requireNonNull(headers, "headers is null");
+        if (Collections.emptyMap().equals(this.headers)) {
+            this.headers = new HashMap<>(8);
+        }
+        this.headers.putAll(headers);
     }
 
 }

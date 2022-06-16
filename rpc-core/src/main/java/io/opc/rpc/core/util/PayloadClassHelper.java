@@ -7,11 +7,13 @@ import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
+import io.opc.rpc.core.request.LoginClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ClientDetectionClientResponse;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
+import io.opc.rpc.core.response.LoginServerResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,6 +58,7 @@ public class PayloadClassHelper {
         register(ConnectionResetServerRequest.class, ConnectionResetClientResponse.class);
         register(ClientDetectionServerRequest.class, ClientDetectionClientResponse.class);
         register(ErrorResponse.class);
+        register(LoginClientRequest.class, LoginServerResponse.class);
     }
 
     public void register(Class<? extends Request> requestClass, Class<? extends Response> responseClass) {

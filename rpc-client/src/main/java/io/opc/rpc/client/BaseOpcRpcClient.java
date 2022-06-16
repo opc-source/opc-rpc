@@ -40,15 +40,18 @@ import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
+import io.opc.rpc.core.request.LoginClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
+import io.opc.rpc.core.response.LoginServerResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
 import io.opc.rpc.core.util.PayloadClassHelper;
 import io.opc.rpc.core.util.PayloadObjectHelper;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -61,6 +64,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,6 +108,8 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
      */
     protected volatile Connection currentConnection;
 
+    protected LoginProxy loginProxy;
+
     @Override
     public void init(@Nonnull Properties properties) {
         if (!this.rpcClientStatus.compareAndSet(OpcRpcStatus.WAIT_INIT, OpcRpcStatus.STARTING)) {
@@ -113,6 +119,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 Constants.Client.DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE);
         // eg: localhost:12345,domain:12344,127.0.0.1:12343
         final String serverAddress = properties.getProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS);
+        Objects.requireNonNull(serverAddress, Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS + " must be set.");
         this.clientName = (String) properties.getOrDefault(Constants.Client.KEY_OPC_RPC_CLIENT_NAME, serverAddress);
         this.endpoints = Endpoint.resolveServerAddress(serverAddress);
 
@@ -161,6 +168,9 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         // subclass init
         this.doInit(properties);
 
+        this.loginProxy = new LoginProxy(properties);
+        this.scheduleLoginRefreshTask();
+
         // Finally do connectToServer
         final Endpoint endpoint = Endpoint.randomOne(this.endpoints);
         this.currentConnection = this.connectToServer(endpoint);
@@ -170,6 +180,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             this.rpcClientStatus.set(OpcRpcStatus.UNHEALTHY);
         } else {
             this.rpcClientStatus.set(OpcRpcStatus.RUNNING);
+            this.doLoginImmediately();
         }
     }
 
@@ -199,6 +210,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
             }
             this.currentConnection = connection;
             this.rpcClientStatus.set(OpcRpcStatus.RUNNING);
+            this.doLoginImmediately();
         }
     }
 
@@ -307,6 +319,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         } else if (!OpcRpcStatus.RUNNING.equals(this.rpcClientStatus.get())) {
             throw new OpcConnectionException(ExceptionCode.CONNECTION_UNHEALTHY);
         }
+        request.putHeaderIfValNonnull(Constants.HEADER_KEY_OPC_ACCESS_TOKEN, this.loginProxy.getAccessToken());
         this.currentConnection.requestAsync(request, requestCallback);
     }
 
@@ -318,6 +331,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         } else if (!OpcRpcStatus.RUNNING.equals(this.rpcClientStatus.get())) {
             throw new OpcConnectionException(ExceptionCode.CONNECTION_UNHEALTHY);
         }
+        request.putHeaderIfValNonnull(Constants.HEADER_KEY_OPC_ACCESS_TOKEN, this.loginProxy.getAccessToken());
         return this.currentConnection.requestFuture(request);
     }
 
@@ -354,6 +368,84 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                         .build());
         opcExecutor.allowCoreThreadTimeOut(true);
         return opcExecutor;
+    }
+
+    /**
+     * login if username & password not empty
+     */
+    protected void doLoginImmediately() {
+        if (!this.loginProxy.needLogin() || this.currentConnection == null) {
+            return;
+        }
+        this.loginProxy.login();
+    }
+
+    /**
+     * login if username & password not empty, schedule an async refresh task
+     */
+    private void scheduleLoginRefreshTask() {
+        if (!this.loginProxy.needLogin()) {
+            return;
+        }
+        this.scheduledExecutor.scheduleWithFixedDelay(() -> {
+            if (OpcRpcStatus.SHUTDOWN.equals(this.rpcClientStatus.get())) {
+                return;
+            }
+            this.doLoginImmediately();
+        }, TimeUnit.MINUTES.toMillis(5), TimeUnit.MINUTES.toMillis(5), TimeUnit.MILLISECONDS);
+    }
+
+    public class LoginProxy {
+
+        private final String username;
+
+        private final String password;
+
+        @Getter
+        private String accessToken;
+
+        public LoginProxy(Properties properties) {
+            this.username = properties.getProperty(Constants.Client.KEY_OPC_RPC_CLIENT_USERNAME);
+            this.password = properties.getProperty(Constants.Client.KEY_OPC_RPC_CLIENT_PASSWORD);
+        }
+
+        /**
+         * login get accessToken.
+         *
+         * @return accessToken
+         */
+        public String login() {
+            this.accessToken = this.login(this.username, this.password);
+            return this.accessToken;
+        }
+
+        /**
+         * whether we need login.
+         */
+        public boolean needLogin() {
+            return (username != null && !username.isEmpty()) && (password != null && !password.isEmpty());
+        }
+
+        /**
+         * login get accessToken.
+         *
+         * @param username username
+         * @param password password
+         * @return accessToken
+         */
+        protected String login(String username, String password) {
+            final LoginClientRequest loginClientRequest = LoginClientRequest.builder().username(username).password(password).build();
+            try {
+                final RequestFuture<LoginServerResponse> requestFuture = BaseOpcRpcClient.this.currentConnection
+                        .requestFuture(loginClientRequest);
+                return requestFuture.get().getAccessToken();
+            } catch (OpcConnectionException connEx) {
+                log.warn("[{}]requestBi LoginClientRequest connEx", BaseOpcRpcClient.this.currentConnection.getConnectionId(), connEx);
+            } catch (Exception unknownEx) {
+                log.error("[{}]requestBi LoginClientRequest error", BaseOpcRpcClient.this.currentConnection.getConnectionId(), unknownEx);
+            }
+            return null;
+        }
     }
 
     /**

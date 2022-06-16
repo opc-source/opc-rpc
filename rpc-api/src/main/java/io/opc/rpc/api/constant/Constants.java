@@ -15,6 +15,11 @@ public interface Constants {
 
     String COMMA = ",";
 
+    /**
+     * OPC-ACCESS-TOKEN
+     */
+    String HEADER_KEY_OPC_ACCESS_TOKEN = "OPC-ACCESS-TOKEN";
+
     interface Client {
 
         /**
@@ -39,6 +44,16 @@ public interface Constants {
          * default 5000L
          */
         long DEFAULT_OPC_RPC_CLIENT_KEEP_ACTIVE = TimeUnit.SECONDS.toMillis(5);
+
+        /**
+         * opc.rpc.client.username, maybe same as opc.rpc.client.name
+         */
+        String KEY_OPC_RPC_CLIENT_USERNAME = "opc.rpc.client.username";
+
+        /**
+         * opc.rpc.client.password
+         */
+        String KEY_OPC_RPC_CLIENT_PASSWORD = "opc.rpc.client.password";
 
     }
 

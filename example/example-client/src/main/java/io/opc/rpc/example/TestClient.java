@@ -36,6 +36,8 @@ public class TestClient {
         final Properties properties = new Properties();
         properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_NAME, "localTest");
         properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost,127.0.0.1:6667");
+        properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_USERNAME, "localTest");
+        properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_PASSWORD, "localTest-passwd");
 
         final OpcRpcClient rpcClient1 = getOpcRpcClient(properties);
         properties.setProperty(Constants.Client.KEY_OPC_RPC_CLIENT_SERVER_ADDRESS, "localhost:6666,localhost:6667");
@@ -62,6 +64,7 @@ public class TestClient {
         new Thread(() -> {
             while (!STOP.get()) {
                 final ClientTestClientRequest testClientRequest = new ClientTestClientRequest();
+                testClientRequest.setTest(String.valueOf(System.currentTimeMillis()));
                 try {
                     rpcClient.requestAsync(testClientRequest, new RequestCallback<ClientTestServerResponse>() {
                         @Override
