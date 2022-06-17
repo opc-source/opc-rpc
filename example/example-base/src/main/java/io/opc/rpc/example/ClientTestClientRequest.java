@@ -3,7 +3,6 @@ package io.opc.rpc.example;
 import io.opc.rpc.api.request.ClientRequest;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.ToString;
 
 /**
  * @author mengyuan
@@ -11,9 +10,16 @@ import lombok.ToString;
  */
 @Getter
 @Setter
-@ToString(callSuper = true)
 public class ClientTestClientRequest extends ClientRequest {
 
     private String test;
 
+    @Override
+    public String toString() {
+        return "ClientTestClientRequest{" +
+                "requestId='" + requestId + '\'' +
+                ", headers=" + headers +
+                ", test='" + test + '\'' +
+                '}';
+    }
 }
