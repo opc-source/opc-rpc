@@ -58,6 +58,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -103,6 +104,8 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
      * connection.
      */
     protected volatile Connection currentConnection;
+
+    protected final AtomicInteger connRetryTimes = new AtomicInteger(0);
 
     @Override
     public void init(@Nonnull Properties properties) {
@@ -189,6 +192,12 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     protected void reconnect(@Nonnull final Endpoint endpoint) {
         Connection connection = this.connectToServer(endpoint);
         if (connection == null) {
+            try {
+                // sleep x milliseconds to switch next server. first round delay 100ms, second round delay 200ms; max delay 5s.
+                Thread.sleep(Math.min(this.connRetryTimes.incrementAndGet() * 100L, 5000L));
+            } catch (InterruptedException ignore) {
+                Thread.currentThread().interrupt();
+            }
             log.error("reconnect to server failed. do asyncSwitchServerExclude {}.", endpoint.getAddress());
             this.asyncSwitchServerExclude(endpoint);
         } else {
@@ -198,6 +207,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 this.scheduledExecutor.execute(oldConn::close);
             }
             this.currentConnection = connection;
+            this.connRetryTimes.set(0);
             this.rpcClientStatus.set(OpcRpcStatus.RUNNING);
         }
     }
