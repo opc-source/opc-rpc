@@ -81,4 +81,36 @@ public interface Constants {
 
     }
 
+    /**
+     * About auth, key start with `opc.rpc.auth.`
+     */
+    interface AUTH {
+
+        /**
+         * opc.rpc.auth.enabled=true
+         */
+        String KEY_OPC_RPC_AUTH_ENABLED = "opc.rpc.auth.enabled";
+
+        /**
+         * opc.rpc.auth.type
+         */
+        String KEY_OPC_RPC_AUTH_TYPE = "opc.rpc.auth.type";
+
+        /**
+         * opc.rpc.auth.expire=18000L
+         */
+        String KEY_OPC_RPC_AUTH_EXPIRE = "opc.rpc.auth.expire";
+
+        /**
+         * 18000L millis
+         */
+        long DEFAULT_OPC_RPC_AUTH_EXPIRE = TimeUnit.MINUTES.toMillis(30);
+
+        /**
+         * opc.rpc.auth.secret-key
+         */
+        String KEY_OPC_RPC_AUTH_SECRET_KEY = "opc.rpc.auth.secret-key";
+
+    }
+
 }
