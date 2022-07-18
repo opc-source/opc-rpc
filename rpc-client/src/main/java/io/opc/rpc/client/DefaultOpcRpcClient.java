@@ -1,6 +1,8 @@
 package io.opc.rpc.client;
 
+import io.opc.rpc.api.Endpoint;
 import io.opc.rpc.api.OpcRpcClient;
+import io.opc.rpc.api.exception.OpcConnectionException;
 import java.util.Properties;
 
 /**
@@ -14,6 +16,14 @@ public class DefaultOpcRpcClient extends BaseOpcRpcClient implements OpcRpcClien
     @Override
     protected void doInit(Properties properties) {
 
+    }
+
+    /**
+     * Reconnect server.
+     * <p>Build a new connection and then close the old one.</p>
+     */
+    public void reconnect() throws OpcConnectionException {
+        this.reconnect(Endpoint.randomOneExclude(this.endpoints, this.currentConnection.getEndpoint()), false);
     }
 
 }

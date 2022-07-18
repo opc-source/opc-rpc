@@ -61,6 +61,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -103,6 +104,8 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
 
     protected final BlockingQueue<Endpoint> reconnectionSignal = new ArrayBlockingQueue<>(1);
 
+    protected final AtomicInteger connRetryTimes = new AtomicInteger(0);
+
     /**
      * connection.
      */
@@ -135,7 +138,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 try {
                     final Endpoint poll = this.reconnectionSignal.poll(this.keepActive, TimeUnit.MICROSECONDS);
                     if (poll != null) {
-                        this.reconnect(poll);
+                        this.reconnect(poll, true);
                     }
                 } catch (Exception ignore) {
                     // ignore
@@ -197,9 +200,18 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         this.reconnectionSignal.offer(Endpoint.randomOneExclude(this.endpoints, exclude));
     }
 
-    protected void reconnect(@Nonnull final Endpoint endpoint) {
+    protected void reconnect(@Nonnull final Endpoint endpoint, boolean retryOnFailed) {
         Connection connection = this.connectToServer(endpoint);
         if (connection == null) {
+            if (!retryOnFailed) {
+                throw new OpcConnectionException();
+            }
+            try {
+                // sleep x milliseconds to switch next server. first round delay 100ms, second round delay 200ms; max delay 5s.
+                Thread.sleep(Math.min(this.connRetryTimes.incrementAndGet() * 100L, this.keepActive));
+            } catch (InterruptedException ignore) {
+                Thread.currentThread().interrupt();
+            }
             log.error("reconnect to server failed. do asyncSwitchServerExclude {}.", endpoint.getAddress());
             this.asyncSwitchServerExclude(endpoint);
         } else {
@@ -209,6 +221,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 this.scheduledExecutor.execute(oldConn::close);
             }
             this.currentConnection = connection;
+            this.connRetryTimes.set(0);
             this.rpcClientStatus.set(OpcRpcStatus.RUNNING);
             this.doLoginImmediately();
         }
@@ -246,7 +259,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         try {
             ListenableFuture<Payload> future = opcGrpcServiceFutureStub.request(
                     PayloadObjectHelper.buildGrpcPayload(connectionInitRequest));
-            connectionInitResponse = PayloadObjectHelper.buildApiPayload(future.get(3000, TimeUnit.MILLISECONDS));
+            connectionInitResponse = PayloadObjectHelper.buildApiPayload(future.get(this.keepActive - 200, TimeUnit.MILLISECONDS));
         } catch (Exception e) {
             log.error("connectionInitRequest get error,requestId={}", connectionInitRequest.getRequestId(), e);
             shutdownChanel(channel);
