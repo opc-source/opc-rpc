@@ -131,7 +131,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
                 try {
                     final Endpoint poll = this.reconnectionSignal.poll(this.keepActive, TimeUnit.MICROSECONDS);
                     if (poll != null) {
-                        this.reconnect(poll);
+                        this.reconnect(poll, true);
                     }
                 } catch (Exception ignore) {
                     // ignore
@@ -189,12 +189,15 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         this.reconnectionSignal.offer(Endpoint.randomOneExclude(this.endpoints, exclude));
     }
 
-    protected void reconnect(@Nonnull final Endpoint endpoint) {
+    protected void reconnect(@Nonnull final Endpoint endpoint, boolean retryOnFailed) {
         Connection connection = this.connectToServer(endpoint);
         if (connection == null) {
+            if (!retryOnFailed) {
+                throw new OpcConnectionException();
+            }
             try {
                 // sleep x milliseconds to switch next server. first round delay 100ms, second round delay 200ms; max delay 5s.
-                Thread.sleep(Math.min(this.connRetryTimes.incrementAndGet() * 100L, 5000L));
+                Thread.sleep(Math.min(this.connRetryTimes.incrementAndGet() * 100L, this.keepActive));
             } catch (InterruptedException ignore) {
                 Thread.currentThread().interrupt();
             }
@@ -244,7 +247,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         try {
             ListenableFuture<Payload> future = opcGrpcServiceFutureStub.request(
                     PayloadObjectHelper.buildGrpcPayload(connectionInitRequest));
-            connectionInitResponse = PayloadObjectHelper.buildApiPayload(future.get(3000, TimeUnit.MILLISECONDS));
+            connectionInitResponse = PayloadObjectHelper.buildApiPayload(future.get(this.keepActive - 200, TimeUnit.MILLISECONDS));
         } catch (Exception e) {
             log.error("connectionInitRequest get error,requestId={}", connectionInitRequest.getRequestId(), e);
             shutdownChanel(channel);
