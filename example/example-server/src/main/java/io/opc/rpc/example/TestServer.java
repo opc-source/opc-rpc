@@ -78,7 +78,7 @@ public class TestServer {
         final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties2);
 
         PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
-        rpcServer.registerClientRequestHandler(ClientTestClientRequest.class, new ClientTestRequestHandler());
+        rpcServer.registerClientRequestHandler(new ClientTestRequestHandler());
         PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
 
         return rpcServer;
