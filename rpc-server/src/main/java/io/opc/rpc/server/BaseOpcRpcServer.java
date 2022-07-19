@@ -45,7 +45,6 @@ import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
-import io.opc.rpc.core.request.LoginClientRequest;
 import io.opc.rpc.core.request.ServerDetectionClientRequest;
 import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
@@ -105,7 +104,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
         this.executor = this.createServerExecutor(serverPort);
 
         // register LoginRequestHandler for LoginClientRequest, tobe a good practice of RequestHandler
-        this.registerClientRequestHandler(LoginClientRequest.class, new LoginRequestHandler());
+        this.registerClientRequestHandler(new LoginRequestHandler());
 
         // subclass init
         this.doInit(properties);
