@@ -58,7 +58,7 @@ public class TestClient {
 
         PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
         PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
-        rpcClient.registerServerRequestHandler(ServerTestServerRequest.class, new ServerTestRequestHandler());
+        rpcClient.registerServerRequestHandler(new ServerTestRequestHandler());
 
         //noinspection AlibabaAvoidManuallyCreateThread
         new Thread(() -> {

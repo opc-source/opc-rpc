@@ -190,8 +190,7 @@ public abstract class BaseOpcRpcServer implements OpcRpcServer {
     }
 
     @Override
-    public void registerClientRequestHandler(Class<? extends ClientRequest> requestClass,
-            RequestHandler<? extends ClientRequest, ? extends ServerResponse> requestHandler) {
+    public void registerClientRequestHandler(RequestHandler<? extends ClientRequest, ? extends ServerResponse> requestHandler) {
         //noinspection StatementWithEmptyBody
         if (requestHandler instanceof BaseRequestHandler) {
             // noop, because already be registered on construct

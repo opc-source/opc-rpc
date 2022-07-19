@@ -32,10 +32,8 @@ public interface OpcRpcServer extends AutoCloseable {
     /**
      * register a ClientRequestHandler who handle ClientRequest.
      *
-     * @param requestClass requestClass
      * @param requestHandler RequestHandler
      */
-    void registerClientRequestHandler(Class<? extends ClientRequest> requestClass,
-            RequestHandler<? extends ClientRequest, ? extends ServerResponse> requestHandler);
+    void registerClientRequestHandler(RequestHandler<? extends ClientRequest, ? extends ServerResponse> requestHandler);
 
 }

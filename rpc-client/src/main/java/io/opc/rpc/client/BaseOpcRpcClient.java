@@ -36,7 +36,6 @@ import io.opc.rpc.core.grpc.auto.Payload;
 import io.opc.rpc.core.handle.BaseRequestHandler;
 import io.opc.rpc.core.handle.ClientDetectionRequestHandler;
 import io.opc.rpc.core.handle.RequestHandlerSupport;
-import io.opc.rpc.core.request.ClientDetectionServerRequest;
 import io.opc.rpc.core.request.ConnectionInitClientRequest;
 import io.opc.rpc.core.request.ConnectionResetServerRequest;
 import io.opc.rpc.core.request.ConnectionSetupClientRequest;
@@ -166,7 +165,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
         }, this.keepActive * 2, 1000L, TimeUnit.MILLISECONDS);
 
         // register ClientDetectionRequestHandler for ClientDetectionServerRequest, tobe a good practice of RequestHandler
-        this.registerServerRequestHandler(ClientDetectionServerRequest.class, new ClientDetectionRequestHandler());
+        this.registerServerRequestHandler(new ClientDetectionRequestHandler());
 
         // subclass init
         this.doInit(properties);
@@ -304,8 +303,7 @@ public abstract class BaseOpcRpcClient implements OpcRpcClient {
     protected abstract void doInit(Properties properties);
 
     @Override
-    public void registerServerRequestHandler(Class<? extends ServerRequest> requestClass,
-            RequestHandler<? extends ServerRequest, ? extends ClientResponse> requestHandler) {
+    public void registerServerRequestHandler(RequestHandler<? extends ServerRequest, ? extends ClientResponse> requestHandler) {
 
         //noinspection StatementWithEmptyBody
         if (requestHandler instanceof BaseRequestHandler) {
