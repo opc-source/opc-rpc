@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @UtilityClass
 @Slf4j
-public class ClassUtils {
+class ClassUtils {
 
     /**
      * 从指定的 package 中获取所有的 Class
@@ -32,7 +32,7 @@ public class ClassUtils {
      * @param packageName String packageName
      * @return class list
      */
-    public static List<Class<?>> getClasses(String packageName) throws OpcRpcRuntimeException {
+    List<Class<?>> getClasses(String packageName) throws OpcRpcRuntimeException {
 
         // 第一个class类的集合
         List<Class<?>> classes = new ArrayList<>();
@@ -69,7 +69,7 @@ public class ClassUtils {
      * @param packageName packageName
      * @param packagePath packagePath
      */
-    public static List<Class<?>> findClassByDirectory(String packageName, String packagePath) {
+    List<Class<?>> findClassByDirectory(String packageName, String packagePath) {
         // 获取此包的目录 建立一个File
         File dir = new File(packagePath);
         if (!dir.exists() || !dir.isDirectory()) {
@@ -98,7 +98,7 @@ public class ClassUtils {
         return classes;
     }
 
-    public static List<Class<?>> findClassInJar(String packageName, URL url) throws OpcRpcRuntimeException {
+    List<Class<?>> findClassInJar(String packageName, URL url) throws OpcRpcRuntimeException {
 
         List<Class<?>> classes = new ArrayList<>();
         String packageDirName = packageName.replace('.', '/');

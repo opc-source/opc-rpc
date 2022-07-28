@@ -10,15 +10,15 @@ import lombok.experimental.UtilityClass;
  * @version Id: JsonSerialization.java, v 0.1 2022年06月03日 11:44 caihongwen Exp $
  */
 @UtilityClass
-public class JsonSerialization {
+class JsonSerialization {
 
     private static final Gson GSON = new Gson();
 
-    public String serialize(Object obj) {
+    String serialize(Object obj) {
         return GSON.toJson(obj);
     }
 
-    public <T> T deserialize(String jsonStr, Class<T> clazz) {
+    <T> T deserialize(String jsonStr, Class<T> clazz) {
         return GSON.fromJson(jsonStr, clazz);
     }
 
