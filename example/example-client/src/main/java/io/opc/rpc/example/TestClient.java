@@ -54,8 +54,7 @@ public class TestClient {
     private static OpcRpcClient getOpcRpcClient(Properties properties) {
         final OpcRpcClient rpcClient = OpcRpcFactory.createOpcClient(properties);
 
-        PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
-        PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
+        PayloadClassHelper.register("io.opc.rpc.example");
         rpcClient.registerServerRequestHandler(new ServerTestRequestHandler());
 
         //noinspection AlibabaAvoidManuallyCreateThread

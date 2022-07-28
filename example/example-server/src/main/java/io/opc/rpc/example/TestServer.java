@@ -74,12 +74,11 @@ public class TestServer {
         }
     }
 
-    private static OpcRpcServer getOpcRpcServer(Properties properties2) {
-        final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties2);
+    private static OpcRpcServer getOpcRpcServer(Properties properties) {
+        final OpcRpcServer rpcServer = OpcRpcFactory.createOpcServer(properties);
 
-        PayloadClassHelper.register(ClientTestClientRequest.class, ClientTestServerResponse.class);
+        PayloadClassHelper.register("io.opc.rpc.example");
         rpcServer.registerClientRequestHandler(new ClientTestRequestHandler());
-        PayloadClassHelper.register(ServerTestServerRequest.class, ServerTestClientResponse.class);
 
         return rpcServer;
     }

@@ -1,5 +1,6 @@
 package io.opc.rpc.core.util;
 
+import io.opc.rpc.api.Payload;
 import io.opc.rpc.api.request.Request;
 import io.opc.rpc.api.response.ErrorResponse;
 import io.opc.rpc.api.response.Response;
@@ -13,6 +14,7 @@ import io.opc.rpc.core.response.ConnectionInitServerResponse;
 import io.opc.rpc.core.response.ConnectionResetClientResponse;
 import io.opc.rpc.core.response.ConnectionSetupServerResponse;
 import io.opc.rpc.core.response.ServerDetectionServerResponse;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.experimental.UtilityClass;
@@ -67,8 +69,26 @@ public class PayloadClassHelper {
         ALL_CLASS_NAP.put(responseClass.getName(), responseClass);
     }
 
-    public void register(Class<?> clazz) {
+    public void register(Class<? extends Payload> clazz) {
         ALL_CLASS_NAP.put(clazz.getName(), clazz);
+    }
+
+    /**
+     * Register {@link Payload} which under the {@param packageName}.
+     *
+     * @param packageName String packageName
+     */
+    public void register(String packageName) {
+        final List<Class<?>> classList = ClassUtils.getClasses(packageName);
+        if (classList == null || classList.isEmpty()) {
+            return;
+        }
+        for (Class<?> clazz : classList) {
+            if (Payload.class.isAssignableFrom(clazz)) {
+                //noinspection unchecked
+                register((Class<? extends Payload>) clazz);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

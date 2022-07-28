@@ -49,6 +49,13 @@ public enum ExceptionCode {
      */
     CONNECTION_UNHEALTHY(6801, "Connection Unhealthy."),
 
+    /// ---------------------------------------------------------  ///
+
+    /**
+     * Register Load Class Error.
+     */
+    REGISTER_LOAD_CLASS_ERROR(6901, "Register Load Class Error."),
+
     ;
 
     private final int code;
